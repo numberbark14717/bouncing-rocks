@@ -139,6 +139,26 @@ def crea_roccia(tipo="casuale", lato=0):
     roccia.salute = salute
     return roccia
 
+def draw_salute_roccia(roccia):
+    valore = int(roccia.salute)
+    salute_str = str(valore)
+
+    # CENTRO ORIZZONTALE
+    x = roccia.x + 8
+
+    # CENTRO VERTICALE (numeri in mezzo alla roccia)
+    y = roccia.y
+
+    # larghezza totale del numero (20 px per cifra)
+    larghezza_totale = len(salute_str) * 20
+    x = x - larghezza_totale // 2
+
+    # disegna ogni cifra
+    for cifra in salute_str:
+        numero = Actor("numero_" + cifra)
+        numero.pos = (x, y)
+        numero.draw()
+        x += 20
 
 def draw():
     global punteggio
@@ -206,7 +226,8 @@ def draw():
         
         
     for i in range(len(rocce)):       
-        rocce[i].draw()                   #ok
+        rocce[i].draw()
+        draw_salute_roccia(rocce[i])                   #ok
     #roccia_s.draw()                #ok
     
     screen.draw.text(str(punteggio), (20, 10), color="white")
