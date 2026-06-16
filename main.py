@@ -9,7 +9,7 @@ HEIGHT = 512
 #cannon
 cannone = Actor('cannone',(512, 427))
 hitbox_cannone = Actor("hitbox_cannone", (cannone.x + 0, cannone.y + 0))
-   
+
 #test cannon
 cannone_prova = Actor("cannone_prova",(512,427))
 
@@ -39,10 +39,11 @@ pausa_i = Actor("pausa")
 TITLE = "Bouncing rocks" # Titolo della finestra di gioco
 FPS = 70 # Numero di frame per secondo
 ROCCE_TOTALI = 3
+inizio = "menu"
 palle_cannone = []
 rocce = []
 cannone.x_iniziale = 512
-mode = "gioco"
+mode = inizio
 dueframe = 0
 
 
@@ -83,6 +84,7 @@ def inizio():
 
     palla_cannone = Actor("palla_cannone",(cannone.x, 437))
     palle_cannone.append(palla_cannone)
+
 
 def crea_roccia(tipo="casuale", lato=0):
     global roccia
@@ -139,6 +141,7 @@ def crea_roccia(tipo="casuale", lato=0):
     roccia.salute = salute
     return roccia
 
+
 def draw_salute_roccia(roccia):
     valore = int(roccia.salute)
     salute_str = str(valore)
@@ -160,25 +163,37 @@ def draw_salute_roccia(roccia):
         numero.draw()
         x += 20
 
+
 def draw():
+    global mode
+    
+    if mode == "menu":
+        screen.fill((0, 0, 0))
+        screen.draw.text("Press space to start", center=(WIDTH // 2, HEIGHT // 2), color="white", fontsize=40)
+        return
+
+    elif mode == "pausa":
+        pausa_i.draw()
+        return
+
+
+    elif mode == "sconfitta":
+        hai_perso.draw()
+        return
+    
+    elif mode == "gioco":
+        draw_gioco()
+        return
+
+
+def draw_gioco():
     global punteggio
     global salute
     global danno
     global salute_mostrata
     global M_VU
     global M_VD
-    
-    if mode == "pausa":
-        pausa_i.draw()
-        
-        return
 
-
-    elif mode == "sconfitta":
-        hai_perso.draw()
-        
-        return
-    
     # ottieni la dimensione attuale della finestra 
     w, h = screen.surface.get_size()               #ok
     # ridimensiona lo sfondo 
@@ -195,36 +210,7 @@ def draw():
     #palla_cannone.draw()           #ok
     hitbox_cannone.draw()
     cannone.draw()                 #ok
-        
-    #numero_1.draw()                #ok
-        
-    #numero_2.draw()               #ok
-        
-    #numero_3.draw()               #ok
-        
-    #numero_4.draw()                #ok
-        
-    #numero_5.draw()                #ok
-        
-    #numero_6.draw()               #ok
-        
-    #numero_7.draw()               #ok
-    
-    #numero_8.draw()               #ok
-        
-    #numero_9.draw()               #ok
-        
-    #numero_0.draw()               #ok
-        
-        
-            
-    #roccia_verde.draw()            #ok 
-        
-    #roccia_blu.draw()              #ok
-        
-    #roccia_rossa.draw()            #ok
-        
-        
+
     for i in range(len(rocce)):       
         rocce[i].draw()
         draw_salute_roccia(rocce[i])                   #ok
@@ -237,9 +223,6 @@ def draw():
     screen.draw.text("score", (20, 472), color= "white")
     screen.draw.text("damage", (465, 472), color=(255, 198, 41))
     screen.draw.text("rock's health", (810, 472), color= "red")
-    
-
-    
 
 
 def on_key_down(key):
@@ -269,12 +252,30 @@ def on_key_down(key):
             roccia.cade = roccia.cadem
 
 
-
-
 def update(df):
-    global a
     global mode
+
+    if mode == "menu":
+        if keyboard.space:
+            mode = "gioco"
+            inizio()
+            return # esce subito, non aggiorna nulla
+
+    elif mode == "pausa":
+        return  # esce subito, non aggiorna nulla
+
+    elif mode == "sconfitta":
+        if keyboard.space:
+            mode = "gioco"
+            inizio()
+            return  # esce subito, non aggiorna nulla    
     
+    elif mode == "gioco":
+        gioco()
+
+
+def gioco():
+    global a 
     global dueframe
     global roccia
     global M_VU
@@ -288,145 +289,126 @@ def update(df):
         if roccia.cade in (1, 3):
             roccia.cadem = roccia.cade
       
-
-    
-    
-    if mode == "pausa":
-        return  # esce subito, non aggiorna nulla
-    
-    
-    
-    
-    elif mode == "gioco":
-        #print(len(palle_cannone))
-        if dueframe % 1 == 0:
-            if len(palle_cannone) == 0:
+    #print(len(palle_cannone))
+    if dueframe % 1 == 0:
+        if len(palle_cannone) == 0:
+            palla_cannone = Actor("palla_cannone",(cannone.x, 380))
+            palle_cannone.append(palla_cannone)
+        else:
+            palla_cannone = palle_cannone[len(palle_cannone) - 1]
+            if palla_cannone.y <= 285:
                 palla_cannone = Actor("palla_cannone",(cannone.x, 380))
                 palle_cannone.append(palla_cannone)
-            else:
-                palla_cannone = palle_cannone[len(palle_cannone) - 1]
-                if palla_cannone.y <= 285:
-                    palla_cannone = Actor("palla_cannone",(cannone.x, 380))
-                    palle_cannone.append(palla_cannone)
-        
-            for i in range(len(palle_cannone) - 1, -1, -1):
-                palle_cannone[i].y = palle_cannone[i].y -8
-                
-                if palle_cannone[i].y <= 0:
-                    palle_cannone.pop(i)
-        
-        dueframe += 1
     
-        if keyboard.left and cannone.x > 51:
-           # print("left")
-            cannone.x = cannone.x - 5
-            hitbox_cannone.x = hitbox_cannone.x - 5
-        elif keyboard.right and cannone.x < 973:
-            #print("right")
-            cannone.x = cannone.x + 5
-            hitbox_cannone.x = hitbox_cannone.x + 5
-        
-        #serve per il cannone di prova
+        for i in range(len(palle_cannone) - 1, -1, -1):
+            palle_cannone[i].y = palle_cannone[i].y -8
             
-        #if keyboard.left and cannone_prova.x > 51:
-        #    cannone_prova.x = cannone_prova.x - 5
-            
-        #elif keyboard.right and cannone_prova.x < 973:
-        #    cannone_prova.x = cannone_prova.x + 5
+            if palle_cannone[i].y <= 0:
+                palle_cannone.pop(i)
     
-        #if roccia.x >= -100 or roccia.x <= 1124:
-        
-        #palla_cannone.y = palla_cannone.y - 5
-        
-        #QUESTO VALE PER IL PRIMO RMIBALZO 
-        movimento()
-        collisions()
-        if len(rocce) < ROCCE_TOTALI:
-            roccia = crea_roccia()
-            rocce.append(roccia)
+    dueframe += 1
 
-        for  i in range (len(rocce)):        
-            if rocce[i].lato == 2:
-                rocce[i].x = rocce[i].x - 3
-            
-            elif rocce[i].lato == 1:
-               rocce[i].x = rocce[i].x + 3    
-    elif mode == "sconfitta":
-        if keyboard.space:
-            mode = "gioco"
-            inizio()
-            
+    if keyboard.left and cannone.x > 51:
+        # print("left")
+        cannone.x = cannone.x - 5
+        hitbox_cannone.x = hitbox_cannone.x - 5
+    elif keyboard.right and cannone.x < 973:
+        #print("right")
+        cannone.x = cannone.x + 5
+        hitbox_cannone.x = hitbox_cannone.x + 5
+    
+    #serve per il cannone di prova
+        
+    #if keyboard.left and cannone_prova.x > 51:
+    #    cannone_prova.x = cannone_prova.x - 5
+        
+    #elif keyboard.right and cannone_prova.x < 973:
+    #    cannone_prova.x = cannone_prova.x + 5
+
+    #if roccia.x >= -100 or roccia.x <= 1124:
+    
+    #palla_cannone.y = palla_cannone.y - 5
+    
+    #QUESTO VALE PER IL PRIMO RMIBALZO 
+    movimento()
+    collisions()
+    if len(rocce) < ROCCE_TOTALI:
+        roccia = crea_roccia()
+        rocce.append(roccia)
+
+    for  i in range (len(rocce)):        
+        if rocce[i].lato == 2:
+            rocce[i].x = rocce[i].x - 3
+        
+        elif rocce[i].lato == 1:
+            rocce[i].x = rocce[i].x + 3    
         
     #elif roccia.x <= -300:
         
     #    rocce.pop(i)
     #    roccia = crea_roccia()
     #    rocce.append(roccia)
-        
-def collisions():
-    global mode
-    global punteggio
-    global danno
-    global salute
-    global M_VU
-    global M_VD
-    global salute_aggiuntiva
 
-    #print(danno, "= danno")
-    
-    for i in range(len(rocce) -1, -1, -1):
+
+def collisions():
+    global mode, punteggio, danno, salute, M_VU, M_VD, salute_aggiuntiva
+
+    # Controllo collisione cannone → sconfitta
+    for i in range(len(rocce) - 1, -1, -1):
         if hitbox_cannone.colliderect(rocce[i]):
             mode = "sconfitta"
+            return
+
+        # Controllo collisioni con le palle
         for j in range(len(palle_cannone) - 1, -1, -1):
             if rocce[i].colliderect(palle_cannone[j]):
-                
+
+                # Rimuovi la palla
                 palle_cannone.pop(j)
-                
-                rocce[i].salute = rocce[i].salute - danno
-                
-        if rocce[i].salute <= 0:
-            salute_aggiuntiva = random.randint(1, 2)
-            M_VU = M_VU + salute_aggiuntiva
-            M_VD = M_VD + salute_aggiuntiva
-            #print("M_VU =", M_VU, "M_VD =", M_VD)
-            valore = 5
-            
-            if rocce[i].tipo == "roccia_rossa":
-                valore = 50
-                
-            elif rocce[i].tipo == "roccia_verde_s":
-                #valore = 150
-                dannop = random.randint(2, 5)
-                danno = danno + dannop
-                
-            elif rocce[i].tipo == "roccia":
-                
-                roccia_destra = crea_roccia("roccia_s", 1)
-                roccia_destra.x = rocce[i].x
-                roccia_destra.y = rocce[i].y
-                
-                roccia_sinistra = crea_roccia("roccia_s", 2)
-                roccia_sinistra.x = rocce[i].x
-                roccia_sinistra.y = rocce[i].y
-                
-                rocce.append(roccia_destra)
-                rocce.append(roccia_sinistra)
-                
-            rocce.pop(i)
-            punteggio = punteggio + valore
-            
-            #roccia = crea_roccia()
-            #rocce.append(roccia)
-            
-            
-            
+
+                # Applica danno
+                rocce[i].salute -= danno
+
+                # Se la roccia è morta → uccidila SUBITO
+                if rocce[i].salute < 1:
+                    uccidi_roccia(i)
+                    break  # interrompe il ciclo delle palle, la roccia non esiste più
 
 
-        
+def uccidi_roccia(i):
+    global punteggio, danno, M_VU, M_VD, salute_aggiuntiva
 
-#def on_mouse_down(button):
-    
-inizio()
+    salute_aggiuntiva = random.randint(1, 2)
+    M_VU += salute_aggiuntiva
+    M_VD += salute_aggiuntiva
+
+    valore = 5
+
+    if rocce[i].tipo == "roccia_rossa":
+        valore = 50
+
+    elif rocce[i].tipo == "roccia_verde_s":
+        dannop = random.randint(2, 5)
+        danno += dannop
+
+    elif rocce[i].tipo == "roccia":
+        roccia_destra = crea_roccia("roccia_s", 1)
+        roccia_destra.x = rocce[i].x
+        roccia_destra.y = rocce[i].y
+
+        roccia_sinistra = crea_roccia("roccia_s", 2)
+        roccia_sinistra.x = rocce[i].x
+        roccia_sinistra.y = rocce[i].y
+
+        rocce.append(roccia_destra)
+        rocce.append(roccia_sinistra)
+
+    # Rimuovi la roccia
+    rocce.pop(i)
+
+    # Aggiungi punteggio
+    punteggio += valore
+
 
 def movimento():
     global suolo
@@ -470,4 +452,4 @@ def movimento():
             rocce.pop(i)
             roccia = crea_roccia()
             rocce.append(roccia)
-pgzrun.go()                    
+pgzrun.go()
