@@ -31,9 +31,13 @@ play.pos = (WIDTH // 2, HEIGHT // 2 - 50)
 play_h = Actor("play_button_h")
 play_h.pos = (WIDTH // 2, HEIGHT // 2 - 50)
 options = Actor("options_button")
-options.pos = (WIDTH // 2, HEIGHT // 2 + 50)
+options.pos = (WIDTH // 2, HEIGHT // 2 + 25)
 options_h = Actor("options_button_h")
-options_h.pos = (WIDTH // 2, HEIGHT // 2 + 50)
+options_h.pos = (WIDTH // 2, HEIGHT // 2 + 25)
+exit = Actor("exit_button")
+exit.pos = (WIDTH // 2, HEIGHT // 2 + 175)
+exit_h = Actor("exit_button_h")
+exit_h.pos = (WIDTH // 2, HEIGHT // 2 + 175)
 
 #rocks
 #roccia_blu = Actor('roccia_blu')
@@ -46,6 +50,7 @@ sfondo_caverna = pygame.image.load("images/sfondo_caverna.png")
 hai_perso = Actor("hai_perso")
 hai_perso.pos = (WIDTH // 2, HEIGHT // 2)
 pausa_i = Actor("pausa")
+pausa_i.pos = (WIDTH // 2, HEIGHT // 2)
 
 TITLE = "Bouncing rocks" # Titolo della finestra di gioco
 FPS = 70 # Numero di frame per secondo
@@ -53,6 +58,7 @@ ROCCE_TOTALI = 3
 inizio = "menu"
 palle_cannone = []
 rocce = []
+rocce_menu = []
 cannone.x_iniziale = 512
 mode = inizio
 dueframe = 0
@@ -153,6 +159,71 @@ def crea_roccia(tipo="casuale", lato=0):
     return roccia
 
 
+def crea_roccia_menu():
+    tipo = "roccia"
+    rand = random.randint(1, 20)
+    if rand <= 3:
+        tipo = "roccia_rossa"
+    elif rand >= 16:
+        tipo = "roccia_verde_s"
+    else:
+        if random.randint(1, 2) == 1:
+            tipo = "roccia_s"
+
+    r = Actor(tipo)
+
+    lato = random.randint(1, 2)
+
+    if lato == 1:
+        r.x = random.randint(-226, -126)
+    else:
+        r.x = random.randint(1150, 1250)
+
+    r.y = random.randint(0, 160)
+    r.lato = lato
+    r.vel = 3
+
+    r.y_partenza = r.y
+    r.suolo = 398
+    if tipo in ("roccia_s", "roccia_verde_s"):
+        r.suolo = 435
+    elif tipo == "roccia_rossa":
+        r.suolo = 373
+
+    r.cade = 1
+    r.cadem = 1
+
+    return r
+
+
+def update_menu_rocce():
+    for i in range(len(rocce_menu) - 1, -1, -1):
+        r = rocce_menu[i]
+
+        if r.lato == 1:
+            r.x += r.vel
+        else:
+            r.x -= r.vel
+
+        if r.cade == 1:
+            animate(r, tween='accelerate', duration=2, y=r.suolo)
+            r.cade = 2
+
+        elif r.y >= r.suolo and r.cade == 2:
+            r.cade = 3
+
+        elif r.cade == 3:
+            animate(r, tween='decelerate', duration=2, y=r.y_partenza)
+            r.cade = 2
+
+        elif r.y <= r.y_partenza + 1 and r.cade == 2:
+            r.cade = 1
+
+        if r.x < -300 or r.x > 1300:
+            rocce_menu.pop(i)
+            rocce_menu.append(crea_roccia_menu())
+
+
 def draw_salute_roccia(roccia):
     valore = int(roccia.salute)
     salute_str = str(valore)
@@ -200,8 +271,11 @@ def draw_menu():
     global mode
 
     screen.blit("sfondo_caverna", (0, 0))
+    for r in rocce_menu:
+        r.draw()
     play.draw()
     options.draw()
+    exit.draw()
 
     if play.collidepoint(pygame.mouse.get_pos()):
         play_h.draw()
@@ -212,6 +286,10 @@ def draw_menu():
     elif options.collidepoint(pygame.mouse.get_pos()):
         options_h.draw()
         return
+    elif exit.collidepoint(pygame.mouse.get_pos()):
+        exit_h.draw()
+        if pygame.mouse.get_pressed()[0]:  # se il tasto sinistro del mouse è premuto
+            raise SystemExit
 
 
 def draw_gioco():
@@ -284,10 +362,15 @@ def update(df):
     global mode
 
     if mode == "menu":
+        if len(rocce_menu) < 5:
+            rocce_menu.append(crea_roccia_menu())
+
+        update_menu_rocce()
+
         if keyboard.space:
             mode = "gioco"
             inizio()
-            return # esce subito, non aggiorna nulla
+            return
 
     elif mode == "pausa":
         return  # esce subito, non aggiorna nulla
