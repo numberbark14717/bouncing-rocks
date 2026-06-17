@@ -1,4 +1,5 @@
 #pgzero
+
 import pygame
 import pgzrun
 import random
@@ -43,8 +44,8 @@ exit_h.pos = (WIDTH // 2, HEIGHT // 2 + 175)
 #roccia_blu = Actor('roccia_blu')
 #roccia_rossa = Actor("roccia_rossa")
 #roccia_verde = Actor("roccia_verde")
-
 #roccia_s = Actor("roccia_s")
+
 #background
 sfondo_caverna = pygame.image.load("images/sfondo_caverna.png")
 hai_perso = Actor("hai_perso")
@@ -58,6 +59,7 @@ ROCCE_TOTALI = 3
 inizio = "menu"
 palle_cannone = []
 rocce = []
+rocce_menu = []
 cannone.x_iniziale = 512
 mode = inizio
 dueframe = 0
@@ -116,6 +118,7 @@ def crea_roccia(tipo="casuale", lato=0):
     if lato == 0:
         lato = random.randint(1, 2)
     altezza = random.randint(0, 160)
+    velocità = random.uniform(2, 5)
     
     if punteggio >= 50:
         salute = random.uniform(M_VU, M_VD)
@@ -155,7 +158,73 @@ def crea_roccia(tipo="casuale", lato=0):
     roccia.cade = 1
     roccia.cadem = roccia.cade
     roccia.salute = salute
+    roccia.velocità = velocità
     return roccia
+
+
+def crea_roccia_menu():
+    tipo = "roccia"
+    rand = random.randint(1, 20)
+    if rand <= 3:
+        tipo = "roccia_rossa"
+    elif rand >= 16:
+        tipo = "roccia_verde_s"
+    else:
+        if random.randint(1, 2) == 1:
+            tipo = "roccia_s"
+
+    r = Actor(tipo)
+
+    lato = random.randint(1, 2)
+
+    if lato == 1:
+        r.x = random.randint(-226, -126)
+    else:
+        r.x = random.randint(1150, 1250)
+
+    r.y = random.randint(0, 160)
+    r.lato = lato
+    r.vel = 3
+
+    r.y_partenza = r.y
+    r.suolo = 398
+    if tipo in ("roccia_s", "roccia_verde_s"):
+        r.suolo = 435
+    elif tipo == "roccia_rossa":
+        r.suolo = 373
+
+    r.cade = 1
+    r.cadem = 1
+
+    return r
+
+
+def update_menu_rocce():
+    for i in range(len(rocce_menu) - 1, -1, -1):
+        r = rocce_menu[i]
+
+        if r.lato == 1:
+            r.x += r.vel
+        else:
+            r.x -= r.vel
+
+        if r.cade == 1:
+            animate(r, tween='accelerate', duration=2, y=r.suolo)
+            r.cade = 2
+
+        elif r.y >= r.suolo and r.cade == 2:
+            r.cade = 3
+
+        elif r.cade == 3:
+            animate(r, tween='decelerate', duration=2, y=r.y_partenza)
+            r.cade = 2
+
+        elif r.y <= r.y_partenza + 1 and r.cade == 2:
+            r.cade = 1
+
+        if r.x < -300 or r.x > 1300:
+            rocce_menu.pop(i)
+            rocce_menu.append(crea_roccia_menu())
 
 
 def draw_salute_roccia(roccia):
@@ -205,6 +274,8 @@ def draw_menu():
     global mode
 
     screen.blit("sfondo_caverna", (0, 0))
+    for r in rocce_menu:
+        r.draw()
     play.draw()
     options.draw()
     exit.draw()
@@ -294,10 +365,15 @@ def update(df):
     global mode
 
     if mode == "menu":
+        if len(rocce_menu) < 5:
+            rocce_menu.append(crea_roccia_menu())
+
+        update_menu_rocce()
+
         if keyboard.space:
             mode = "gioco"
             inizio()
-            return # esce subito, non aggiorna nulla
+            return
 
     elif mode == "pausa":
         return  # esce subito, non aggiorna nulla
@@ -376,10 +452,10 @@ def gioco():
 
     for  i in range (len(rocce)):        
         if rocce[i].lato == 2:
-            rocce[i].x = rocce[i].x - 3
+            rocce[i].x = rocce[i].x - roccia.velocità
         
         elif rocce[i].lato == 1:
-            rocce[i].x = rocce[i].x + 3    
+            rocce[i].x = rocce[i].x + roccia.velocità    
         
     #elif roccia.x <= -300:
         

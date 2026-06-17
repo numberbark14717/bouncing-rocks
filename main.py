@@ -1,4 +1,5 @@
 #pgzero
+
 import pygame
 import pgzrun
 import random
@@ -43,8 +44,8 @@ exit_h.pos = (WIDTH // 2, HEIGHT // 2 + 175)
 #roccia_blu = Actor('roccia_blu')
 #roccia_rossa = Actor("roccia_rossa")
 #roccia_verde = Actor("roccia_verde")
-
 #roccia_s = Actor("roccia_s")
+
 #background
 sfondo_caverna = pygame.image.load("images/sfondo_caverna.png")
 hai_perso = Actor("hai_perso")
@@ -117,6 +118,7 @@ def crea_roccia(tipo="casuale", lato=0):
     if lato == 0:
         lato = random.randint(1, 2)
     altezza = random.randint(0, 160)
+    velocità = random.uniform(2, 5)
     
     if punteggio >= 50:
         salute = random.uniform(M_VU, M_VD)
@@ -156,6 +158,7 @@ def crea_roccia(tipo="casuale", lato=0):
     roccia.cade = 1
     roccia.cadem = roccia.cade
     roccia.salute = salute
+    roccia.velocità = velocità
     return roccia
 
 
@@ -181,7 +184,7 @@ def crea_roccia_menu():
 
     r.y = random.randint(0, 160)
     r.lato = lato
-    r.vel = 3
+    r.vel = random.uniform(2, 5)
 
     r.y_partenza = r.y
     r.suolo = 398
@@ -449,10 +452,10 @@ def gioco():
 
     for  i in range (len(rocce)):        
         if rocce[i].lato == 2:
-            rocce[i].x = rocce[i].x - 3
+            rocce[i].x = rocce[i].x - rocce[i].velocità
         
         elif rocce[i].lato == 1:
-            rocce[i].x = rocce[i].x + 3    
+            rocce[i].x = rocce[i].x + rocce[i].velocità
         
     #elif roccia.x <= -300:
         
