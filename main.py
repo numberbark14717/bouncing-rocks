@@ -25,6 +25,16 @@ numero_8 = Actor("numero_8")
 numero_9 = Actor("numero_9")
 numero_0 = Actor("numero_0")
 
+#buttons
+play = Actor("play_button")
+play.pos = (WIDTH // 2, HEIGHT // 2 - 50)
+play_h = Actor("play_button_h")
+play_h.pos = (WIDTH // 2, HEIGHT // 2 - 50)
+options = Actor("options_button")
+options.pos = (WIDTH // 2, HEIGHT // 2 + 50)
+options_h = Actor("options_button_h")
+options_h.pos = (WIDTH // 2, HEIGHT // 2 + 50)
+
 #rocks
 #roccia_blu = Actor('roccia_blu')
 #roccia_rossa = Actor("roccia_rossa")
@@ -34,6 +44,7 @@ numero_0 = Actor("numero_0")
 #background
 sfondo_caverna = pygame.image.load("images/sfondo_caverna.png")
 hai_perso = Actor("hai_perso")
+hai_perso.pos = (WIDTH // 2, HEIGHT // 2)
 pausa_i = Actor("pausa")
 
 TITLE = "Bouncing rocks" # Titolo della finestra di gioco
@@ -168,8 +179,7 @@ def draw():
     global mode
     
     if mode == "menu":
-        screen.fill((0, 0, 0))
-        screen.draw.text("Press space to start", center=(WIDTH // 2, HEIGHT // 2), color="white", fontsize=40)
+        draw_menu()
         return
 
     elif mode == "pausa":
@@ -179,10 +189,28 @@ def draw():
 
     elif mode == "sconfitta":
         hai_perso.draw()
-        return
+        return # esce subito, non aggiorna nulla
     
     elif mode == "gioco":
         draw_gioco()
+        return
+
+
+def draw_menu():
+    global mode
+
+    screen.blit("sfondo_caverna", (0, 0))
+    play.draw()
+    options.draw()
+
+    if play.collidepoint(pygame.mouse.get_pos()):
+        play_h.draw()
+        if pygame.mouse.get_pressed()[0]:  # se il tasto sinistro del mouse è premuto
+            mode = "gioco"
+            inizio()
+            return  # esce subito, non aggiorna nulla
+    elif options.collidepoint(pygame.mouse.get_pos()):
+        options_h.draw()
         return
 
 
