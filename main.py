@@ -283,20 +283,23 @@ def draw():
 def on_mouse_down(pos):
     global mode
 
-    if mode == "menu":
+    if mode == "menu" and attivato == False:
         if play.collidepoint(pos):
             play.state = "premuto"
+            sounds.suono_pressione_pulsante.play()
         elif options.collidepoint(pos):
             options.state = "premuto"
+            sounds.suono_pressione_pulsante.play()
         elif exit.collidepoint(pos):
             exit.state = "premuto"
+            sounds.suono_pressione_pulsante.play()
 
 
 def on_mouse_up(pos):
     global mode
     global attivato
 
-    if mode == "menu":
+    if mode == "menu" and attivato == False:
         if play.collidepoint(pos):
             play.state = "normale"
             clock.schedule_unique(pulsante_play, 0.5)  # chiama la funzione dopo 0.5 secondi
@@ -486,11 +489,13 @@ def gioco():
     if dueframe % 1 == 0:
         if len(palle_cannone) == 0:
             palla_cannone = Actor("palla_cannone",(cannone.x, 380))
+            sounds.suono_sparo.play()
             palle_cannone.append(palla_cannone)
         else:
             palla_cannone = palle_cannone[len(palle_cannone) - 1]
             if palla_cannone.y <= 285:
                 palla_cannone = Actor("palla_cannone",(cannone.x, 380))
+                sounds.suono_sparo.play()
                 palle_cannone.append(palla_cannone)
     
         for i in range(len(palle_cannone) - 1, -1, -1):
@@ -559,12 +564,16 @@ def collisions():
                 # Rimuovi la palla
                 palle_cannone.pop(j)
 
+                # Evviva, i suoni!
+                sounds.suono_palla_contro_roccia.play()
+
                 # Applica danno
                 rocce[i].salute -= danno
 
-                # Se la roccia è morta → uccidila SUBITO
+                # Se la roccia è morta uccidila SUBITO
                 if rocce[i].salute < 1:
                     uccidi_roccia(i)
+                    sounds.suono_rottura_roccia.play()
                     break  # interrompe il ciclo delle palle, la roccia non esiste più
 
 
@@ -621,7 +630,7 @@ def movimento():
         
         
         if roccia.cade == 1:
-            #print("giu", roccia.y)
+            #print("giù", roccia.y)
             animate(roccia, tween='accelerate', duration=2, y = roccia.suolo)
             #roccia.y += 5
             roccia.cade = 2
@@ -629,6 +638,7 @@ def movimento():
         elif roccia.y >= roccia.suolo and roccia.cade == 2:
             roccia.cade = 3
             roccia.cadem = 3
+            sounds.suono_schianto_roccia.play()
             
         elif roccia.cade == 3:
             #print("su", roccia.y)
