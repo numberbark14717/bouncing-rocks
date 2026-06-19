@@ -31,14 +31,23 @@ play = Actor("play_button")
 play.pos = (WIDTH // 2, HEIGHT // 2 - 50)
 play_h = Actor("play_button_h")
 play_h.pos = (WIDTH // 2, HEIGHT // 2 - 50)
+play_p = Actor("play_button_p")
+play_p.pos = (WIDTH // 2, HEIGHT // 2 - 50)
 options = Actor("options_button")
 options.pos = (WIDTH // 2, HEIGHT // 2 + 25)
 options_h = Actor("options_button_h")
 options_h.pos = (WIDTH // 2, HEIGHT // 2 + 25)
+options_p = Actor("options_button_p")
+options_p.pos = (WIDTH // 2, HEIGHT // 2 + 25)
 exit = Actor("exit_button")
 exit.pos = (WIDTH // 2, HEIGHT // 2 + 175)
 exit_h = Actor("exit_button_h")
 exit_h.pos = (WIDTH // 2, HEIGHT // 2 + 175)
+exit_p = Actor("exit_button_p")
+exit_p.pos = (WIDTH // 2, HEIGHT // 2 + 175)
+play.state = "normale"
+options.state = "normale"
+exit.state = "normale"
 
 #rocks
 #roccia_blu = Actor('roccia_blu')
@@ -63,6 +72,7 @@ rocce_menu = []
 cannone.x_iniziale = 512
 mode = inizio
 dueframe = 0
+attivato = False
 
 
 def inizio():
@@ -151,7 +161,7 @@ def crea_roccia(tipo="casuale", lato=0):
         roccia.x = random.randint(-226, -126)
         
     
-# roccia.x = random.randint(24, 900)    
+    # roccia.x = random.randint(24, 900)    
     roccia.y = altezza
     roccia.lato = lato
     roccia.y_partenza = altezza
@@ -270,29 +280,98 @@ def draw():
         return
 
 
+def on_mouse_down(pos):
+    global mode
+
+    if mode == "menu":
+        if play.collidepoint(pos):
+            play.state = "premuto"
+        elif options.collidepoint(pos):
+            options.state = "premuto"
+        elif exit.collidepoint(pos):
+            exit.state = "premuto"
+
+
+def on_mouse_up(pos):
+    global mode
+    global attivato
+
+    if mode == "menu":
+        if play.collidepoint(pos):
+            play.state = "normale"
+            clock.schedule_unique(pulsante_play, 0.5)  # chiama la funzione dopo 0.5 secondi
+            #risposta_pulsante(play)
+            attivato = True
+        elif exit.collidepoint(pos):
+            exit.state = "normale"
+            clock.schedule_unique(pulsante_exit, 0.5)  # chiama la funzione dopo 0.5 secondi
+            attivato = True
+            #risposta_pulsante(exit)
+
+
+def on_mouse_move():
+    global mode
+
+    if mode == "menu" and attivato == False:
+        if play.collidepoint(pygame.mouse.get_pos()):
+            play.state = "hover"
+        else:
+            play.state = "normale"
+
+        if options.collidepoint(pygame.mouse.get_pos()):
+            options.state = "hover"
+        else:
+            options.state = "normale"
+
+        if exit.collidepoint(pygame.mouse.get_pos()):
+            exit.state = "hover"
+        else:
+            exit.state = "normale"
+
+
 def draw_menu():
     global mode
 
     screen.blit("sfondo_caverna", (0, 0))
     for r in rocce_menu:
         r.draw()
-    play.draw()
-    options.draw()
-    exit.draw()
-
-    if play.collidepoint(pygame.mouse.get_pos()):
+    if play.state == "normale":
+        play.draw()
+    elif play.state == "hover":
         play_h.draw()
-        if pygame.mouse.get_pressed()[0]:  # se il tasto sinistro del mouse è premuto
-            mode = "gioco"
-            inizio()
-            return  # esce subito, non aggiorna nulla
-    elif options.collidepoint(pygame.mouse.get_pos()):
+    elif play.state == "premuto":
+        play_p.draw()
+    if options.state == "normale":
+        options.draw()
+    elif options.state == "hover":
         options_h.draw()
-        return
-    elif exit.collidepoint(pygame.mouse.get_pos()):
+    elif options.state == "premuto":
+        options_p.draw()
+    if exit.state == "normale":
+        exit.draw()
+    elif exit.state == "hover":
         exit_h.draw()
-        if pygame.mouse.get_pressed()[0]:  # se il tasto sinistro del mouse è premuto
-            raise SystemExit
+    elif exit.state == "premuto":
+        exit_p.draw()
+
+
+def pulsante_play():
+    risposta_pulsante(play)
+
+
+def pulsante_exit():
+    risposta_pulsante(exit)
+
+
+def risposta_pulsante(pulsante):
+    global mode
+    print("Ciao scemo, hai cliccato ma per qualche motivo non si attiva")
+    if pulsante is play:
+        mode = "gioco"
+        inizio()
+        return  # esce subito, non aggiorna nulla
+    elif pulsante is exit:
+        raise SystemExit
 
 
 def draw_gioco():
