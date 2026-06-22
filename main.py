@@ -76,12 +76,12 @@ indice_calcoli = indice
 volume = 1.0
 volume_calcoli = volume
 volume_t = Actor("volume")
-volume_t.pos = (WIDTH // 2, HEIGHT // 2 + 100)
+volume_t.pos = (WIDTH // 2, HEIGHT // 2 - 50)
 scroll_bar = Actor("scroll_bar")
-scroll_bar.pos = (WIDTH // 2, HEIGHT // 2 + 120)
+scroll_bar.pos = (WIDTH // 2, HEIGHT // 2 + 10)
 scroller = Actor("scroller")
 scroller.x = tacche[indice]
-scroller.y = HEIGHT//2 + 120
+scroller.y = HEIGHT//2 + 10
 
 #rocks
 #roccia_blu = Actor('roccia_blu')
@@ -348,8 +348,6 @@ def on_mouse_up(pos):
     global indice
     global indice_calcoli
     global distanza
-    print("posizione di rilascio mouse:", pygame.mouse.get_pos())
-    print("posizione tacca 5 =", tacche[4])
     if mode == "menu" and attivato == False:
         if play.collidepoint(pos):
             play.state = "normale"
@@ -486,10 +484,17 @@ def draw_imp():
     global mode
 
     screen.blit("sfondo_caverna", (0, 0))
+    for r in rocce_menu:
+        r.draw()
+    if exit.state == "normale":
+        exit.draw()
+    elif exit.state == "hover":
+        exit_h.draw()
+    elif exit.state == "premuto":
+        exit_p.draw()
     volume_t.draw()
     scroll_bar.draw()
     scroller.draw()
-    exit.draw()
 
 
 def geometria_analitica(x1, x2):
@@ -544,9 +549,11 @@ def pulsante_options():
 
 def risposta_pulsante(pulsante):
     global mode
-    print("Ciao scemo, hai cliccato ma per qualche motivo non si attiva")
+    global attivato
+
     if pulsante is play:
         mode = "gioco"
+        attivato = False
         inizio()
         return  # esce subito, non aggiorna nulla
     elif pulsante is exit:
@@ -554,9 +561,11 @@ def risposta_pulsante(pulsante):
             raise SystemExit
         elif mode == "impostazioni":
             mode = "menu"
+            attivato = False
             return  # esce subito, non aggiorna nulla
     elif pulsante is options:
         mode = "impostazioni"
+        attivato = False
         return  # esce subito, non aggiorna nulla
 
 
@@ -629,7 +638,7 @@ def on_key_down(key):
 def update(df):
     global mode
 
-    if mode == "menu":
+    if mode == "menu" or mode == "impostazioni":
         if len(rocce_menu) < 5:
             rocce_menu.append(crea_roccia_menu())
 

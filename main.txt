@@ -54,31 +54,34 @@ exit.state = "normale"
 volume_impostato = 0
 volume_generale = 1.0
 trascinando = False
+bordo_sx = 512 - 181
+
 tacche = [
-    WIDTH//2 - 181,          # 0%
-    WIDTH//2 - 145,          # 10%
-    WIDTH//2 - 109,          # 20%
-    WIDTH//2 - 73,           # 30%
-    WIDTH//2 - 37,           # 40%
-    WIDTH//2,                # 50%
-    WIDTH//2 + 36,           # 60%
-    WIDTH//2 + 72,           # 70%
-    WIDTH//2 + 108,          # 80%
-    WIDTH//2 + 144,          # 90%
-    WIDTH//2 + 181           # 100%
+    bordo_sx + 31,
+    bordo_sx + 61,
+    bordo_sx + 91,
+    bordo_sx + 121,
+    bordo_sx + 151,
+    bordo_sx + 181,
+    bordo_sx + 211,
+    bordo_sx + 241,
+    bordo_sx + 271,
+    bordo_sx + 301,
+    bordo_sx + 331
 ]
+
 
 indice = 10 #100%
 indice_calcoli = indice
 volume = 1.0
 volume_calcoli = volume
 volume_t = Actor("volume")
-volume_t.pos = (WIDTH // 2, HEIGHT // 2 + 100)
+volume_t.pos = (WIDTH // 2, HEIGHT // 2 - 50)
 scroll_bar = Actor("scroll_bar")
-scroll_bar.pos = (WIDTH // 2, HEIGHT // 2 + 120)
+scroll_bar.pos = (WIDTH // 2, HEIGHT // 2 + 10)
 scroller = Actor("scroller")
 scroller.x = tacche[indice]
-scroller.y = HEIGHT//2 + 120
+scroller.y = HEIGHT//2 + 10
 
 #rocks
 #roccia_blu = Actor('roccia_blu')
@@ -317,7 +320,7 @@ def draw():
 def on_mouse_down(pos):
     global mode
     global trascinando
-
+    print("x barra =", scroll_bar.x)
     if mode == "menu" and attivato == False:
         if play.collidepoint(pos):
             play.state = "premuto"
@@ -345,7 +348,6 @@ def on_mouse_up(pos):
     global indice
     global indice_calcoli
     global distanza
-
     if mode == "menu" and attivato == False:
         if play.collidepoint(pos):
             play.state = "normale"
@@ -363,56 +365,34 @@ def on_mouse_up(pos):
             attivato = True
     
     elif mode == "impostazioni":
-        if trascinando == False:
+        if not trascinando:
             if exit.collidepoint(pos):
                 exit.state = "normale"
-                clock.schedule_unique(pulsante_exit, 0.5)  # chiama la funzione dopo 0.5 secondi
+                clock.schedule_unique(pulsante_exit, 0.5)
                 attivato = True
-                #risposta_pulsante(exit)
-        
-        elif trascinando == True:
+        else:
+            # abbiamo finito di trascinare: snap alla tacca più vicina
             trascinando = False
-            indice_calcoli = indice
-            volume_calcoli = volume * 10
-            volume_calcoli = volume_calcoli + 1
-            
-            if volume_calcoli == 1:
-                geometria_analitica(scroller.center[0], tacche[0])
-                distanza1 = distanza
-                geometria_analitica(scroller.center[0], tacche[1])
-                distanza2 = distanza
-                if distanza1 < distanza2:
-                    animate(scroller, tween='decelerate', duration=0.5, x=tacche[0])
-                elif distanza2 < distanza1:
-                    animate(scroller, tween='decelerate', duration=0.5, x=tacche[1])
-                indice = valore_indice()
-                setter_volume()
-            elif volume_calcoli == 11:
-                geometria_analitica(scroller.center[0], tacche[9])
-                distanza1 = distanza
-                geometria_analitica(scroller.center[0], tacche[10])
-                distanza2 = distanza
-                if distanza1 < distanza2:
-                    animate(scroller, tween='decelerate', duration=0.5, x=tacche[9])
-                elif distanza2 < distanza1:
-                    animate(scroller, tween='decelerate', duration=0.5, x=tacche[10])
-                indice = valore_indice()
-                setter_volume()
-            else:
-                geometria_analitica(scroller.center[0], tacche[indice_calcoli - 2])
-                distanza1 = distanza
-                geometria_analitica(scroller.center[0], tacche[indice_calcoli - 1])
-                distanza2 = distanza
-                geometria_analitica(scroller.center[0], tacche[indice_calcoli])
-                distanza3 = distanza
-                if distanza1 < distanza2 and distanza1 < distanza3:
-                    animate(scroller, tween='decelerate', duration=0.5, x=tacche[indice_calcoli - 2])
-                elif distanza2 < distanza1 and distanza2 < distanza3:
-                    animate(scroller, tween='decelerate', duration=0.5, x=tacche[indice_calcoli - 1])
-                elif distanza3 < distanza1 and distanza3 < distanza2:
-                    animate(scroller, tween='decelerate', duration=0.5, x=tacche[indice_calcoli])
-                indice = valore_indice()
-                setter_volume()
+
+            x = scroller.center[0]
+
+            # trova la tacca più vicina
+            migliore_tacca = tacche[0]
+            migliore_dist = abs(x - tacche[0])
+            migliore_indice = 0
+
+            for i in range(1, len(tacche)):
+                d = abs(x - tacche[i])
+                if d < migliore_dist:
+                    migliore_dist = d
+                    migliore_tacca = tacche[i]
+                    migliore_indice = i
+
+            # snap
+            animate(scroller, tween='decelerate', duration=0.2, x=migliore_tacca)
+            indice = migliore_indice
+            setter_volume()
+            sounds.suono_snap_scroller.play()
 
 
 def on_mouse_move():
@@ -439,19 +419,23 @@ def on_mouse_move():
             exit.state = "normale"
     
     elif mode == "impostazioni":
-        if trascinando == True:
-            if pygame.mouse.get_pos()[0] < scroll_bar.midleft[0] + 10:
+        mx, my = pygame.mouse.get_pos()
+
+        if trascinando:
+            # limiti reali: bordo barra tenendo conto della metà dello scroller
+            lim_sx = scroll_bar.left + scroller.width // 2
+            lim_dx = scroll_bar.right - scroller.width // 2
+
+            if mx <= lim_sx:
                 scroller.x = tacche[0]
                 indice = 0
-            elif pygame.mouse.get_pos()[0] > scroll_bar.midright[0] - 10:
+            elif mx >= lim_dx:
                 scroller.x = tacche[10]
-                indice = 11
+                indice = 10
             else:
-                scroller.x = pygame.mouse.get_pos()[0]
-        if scroller.center[0] in tacche and trascinando == True:
-            setter_volume()
-            sounds.suono_snap_scroller.play()
-        if exit.collidepoint(pygame.mouse.get_pos()):
+                scroller.x = mx
+
+        if exit.collidepoint((mx, my)):
             exit.state = "hover"
         else:
             exit.state = "normale"
@@ -461,8 +445,7 @@ def setter_volume():
     global volume
     global indice
 
-    volume = indice - 1
-    volume = volume / 10
+    volume = indice / 10
     sounds.suono_palla_contro_roccia.set_volume(volume)
     sounds.suono_pressione_pulsante.set_volume(volume)
     sounds.suono_rottura_roccia.set_volume(volume)
@@ -501,10 +484,10 @@ def draw_imp():
     global mode
 
     screen.blit("sfondo_caverna", (0, 0))
+    exit.draw()
     volume_t.draw()
     scroll_bar.draw()
     scroller.draw()
-    exit.draw()
 
 
 def geometria_analitica(x1, x2):
@@ -521,27 +504,27 @@ def valore_indice():
     global indice
 
     if scroller.center[0] == tacche[0]:
-        indice = 1
+        indice = 0
     elif scroller.center[0] == tacche[1]:
-        indice = 2
+        indice = 1
     elif scroller.center[0] == tacche[2]:
-        indice = 3
+        indice = 2
     elif scroller.center[0] == tacche[3]:
-        indice = 4
+        indice = 3
     elif scroller.center[0] == tacche[4]:
-        indice = 5
+        indice = 4
     elif scroller.center[0] == tacche[5]:
-        indice = 6
+        indice = 5
     elif scroller.center[0] == tacche[6]:
-        indice = 7
+        indice = 6
     elif scroller.center[0] == tacche[7]:
-        indice = 8
+        indice = 7
     elif scroller.center[0] == tacche[8]:
-        indice = 9
+        indice = 8
     elif scroller.center[0] == tacche[9]:
-        indice = 10
+        indice = 9
     elif scroller.center[0] == tacche[10]:
-        indice = 11
+        indice = 10
     return indice
 
 
@@ -559,9 +542,11 @@ def pulsante_options():
 
 def risposta_pulsante(pulsante):
     global mode
-    print("Ciao scemo, hai cliccato ma per qualche motivo non si attiva")
+    global attivato
+
     if pulsante is play:
         mode = "gioco"
+        attivato = False
         inizio()
         return  # esce subito, non aggiorna nulla
     elif pulsante is exit:
@@ -569,9 +554,11 @@ def risposta_pulsante(pulsante):
             raise SystemExit
         elif mode == "impostazioni":
             mode = "menu"
+            attivato = False
             return  # esce subito, non aggiorna nulla
     elif pulsante is options:
         mode = "impostazioni"
+        attivato = False
         return  # esce subito, non aggiorna nulla
 
 
