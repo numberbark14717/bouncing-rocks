@@ -3,6 +3,7 @@
 import pygame
 import pgzrun
 import random
+import math
 
 WIDTH = 1024
 HEIGHT = 512
@@ -31,14 +32,53 @@ play = Actor("play_button")
 play.pos = (WIDTH // 2, HEIGHT // 2 - 50)
 play_h = Actor("play_button_h")
 play_h.pos = (WIDTH // 2, HEIGHT // 2 - 50)
+play_p = Actor("play_button_p")
+play_p.pos = (WIDTH // 2, HEIGHT // 2 - 50)
 options = Actor("options_button")
 options.pos = (WIDTH // 2, HEIGHT // 2 + 25)
 options_h = Actor("options_button_h")
 options_h.pos = (WIDTH // 2, HEIGHT // 2 + 25)
+options_p = Actor("options_button_p")
+options_p.pos = (WIDTH // 2, HEIGHT // 2 + 25)
 exit = Actor("exit_button")
 exit.pos = (WIDTH // 2, HEIGHT // 2 + 175)
 exit_h = Actor("exit_button_h")
 exit_h.pos = (WIDTH // 2, HEIGHT // 2 + 175)
+exit_p = Actor("exit_button_p")
+exit_p.pos = (WIDTH // 2, HEIGHT // 2 + 175)
+play.state = "normale"
+options.state = "normale"
+exit.state = "normale"
+
+#volumes
+volume_impostato = 0
+volume_generale = 1.0
+trascinando = False
+tacche = [
+    WIDTH//2 - 181,          # 0%
+    WIDTH//2 - 145,          # 10%
+    WIDTH//2 - 109,          # 20%
+    WIDTH//2 - 73,           # 30%
+    WIDTH//2 - 37,           # 40%
+    WIDTH//2,                # 50%
+    WIDTH//2 + 36,           # 60%
+    WIDTH//2 + 72,           # 70%
+    WIDTH//2 + 108,          # 80%
+    WIDTH//2 + 144,          # 90%
+    WIDTH//2 + 181           # 100%
+]
+
+indice = 10 #100%
+indice_calcoli = indice
+volume = 1.0
+volume_calcoli = volume
+volume_t = Actor("volume")
+volume_t.pos = (WIDTH // 2, HEIGHT // 2 + 100)
+scroll_bar = Actor("scroll_bar")
+scroll_bar.pos = (WIDTH // 2, HEIGHT // 2 + 120)
+scroller = Actor("scroller")
+scroller.x = tacche[indice]
+scroller.y = HEIGHT//2 + 120
 
 #rocks
 #roccia_blu = Actor('roccia_blu')
@@ -63,6 +103,7 @@ rocce_menu = []
 cannone.x_iniziale = 512
 mode = inizio
 dueframe = 0
+attivato = False
 
 
 def inizio():
@@ -151,7 +192,7 @@ def crea_roccia(tipo="casuale", lato=0):
         roccia.x = random.randint(-226, -126)
         
     
-# roccia.x = random.randint(24, 900)    
+    # roccia.x = random.randint(24, 900)    
     roccia.y = altezza
     roccia.lato = lato
     roccia.y_partenza = altezza
@@ -184,7 +225,7 @@ def crea_roccia_menu():
 
     r.y = random.randint(0, 160)
     r.lato = lato
-    r.vel = 3
+    r.vel = random.uniform(2, 5)
 
     r.y_partenza = r.y
     r.suolo = 398
@@ -260,6 +301,9 @@ def draw():
         pausa_i.draw()
         return
 
+    elif mode == "impostazioni":
+        draw_imp()
+        return
 
     elif mode == "sconfitta":
         hai_perso.draw()
@@ -270,29 +314,265 @@ def draw():
         return
 
 
+def on_mouse_down(pos):
+    global mode
+    global trascinando
+
+    if mode == "menu" and attivato == False:
+        if play.collidepoint(pos):
+            play.state = "premuto"
+            sounds.suono_pressione_pulsante.play()
+        elif options.collidepoint(pos):
+            options.state = "premuto"
+            sounds.suono_pressione_pulsante.play()
+        elif exit.collidepoint(pos):
+            exit.state = "premuto"
+            sounds.suono_pressione_pulsante.play()
+
+    elif mode == "impostazioni":
+        if scroll_bar.collidepoint(pos):
+            trascinando = True
+        elif exit.collidepoint(pos):
+            exit.state = "premuto"
+            sounds.suono_pressione_pulsante.play()
+
+
+def on_mouse_up(pos):
+    global mode
+    global attivato
+    global trascinando
+    global volume_calcoli
+    global indice
+    global indice_calcoli
+    global distanza
+
+    if mode == "menu" and attivato == False:
+        if play.collidepoint(pos):
+            play.state = "normale"
+            clock.schedule_unique(pulsante_play, 0.5)  # chiama la funzione dopo 0.5 secondi
+            #risposta_pulsante(play)
+            attivato = True
+        elif exit.collidepoint(pos):
+            exit.state = "normale"
+            clock.schedule_unique(pulsante_exit, 0.5)  # chiama la funzione dopo 0.5 secondi
+            attivato = True
+            #risposta_pulsante(exit)
+        elif options.collidepoint(pos):
+            options.state = "normale"
+            clock.schedule_unique(pulsante_options, 0.5)  # chiama la funzione dopo 0.5 secondi
+            attivato = True
+    
+    elif mode == "impostazioni":
+        if trascinando == False:
+            if exit.collidepoint(pos):
+                exit.state = "normale"
+                clock.schedule_unique(pulsante_exit, 0.5)  # chiama la funzione dopo 0.5 secondi
+                attivato = True
+                #risposta_pulsante(exit)
+        
+        elif trascinando == True:
+            trascinando = False
+            indice_calcoli = indice
+            volume_calcoli = volume * 10
+            volume_calcoli = volume_calcoli + 1
+            
+            if volume_calcoli == 1:
+                geometria_analitica(scroller.center[0], tacche[0])
+                distanza1 = distanza
+                geometria_analitica(scroller.center[0], tacche[1])
+                distanza2 = distanza
+                if distanza1 < distanza2:
+                    animate(scroller, tween='decelerate', duration=0.5, x=tacche[0])
+                elif distanza2 < distanza1:
+                    animate(scroller, tween='decelerate', duration=0.5, x=tacche[1])
+                indice = valore_indice()
+                setter_volume()
+            elif volume_calcoli == 11:
+                geometria_analitica(scroller.center[0], tacche[9])
+                distanza1 = distanza
+                geometria_analitica(scroller.center[0], tacche[10])
+                distanza2 = distanza
+                if distanza1 < distanza2:
+                    animate(scroller, tween='decelerate', duration=0.5, x=tacche[9])
+                elif distanza2 < distanza1:
+                    animate(scroller, tween='decelerate', duration=0.5, x=tacche[10])
+                indice = valore_indice()
+                setter_volume()
+            else:
+                geometria_analitica(scroller.center[0], tacche[indice_calcoli - 2])
+                distanza1 = distanza
+                geometria_analitica(scroller.center[0], tacche[indice_calcoli - 1])
+                distanza2 = distanza
+                geometria_analitica(scroller.center[0], tacche[indice_calcoli])
+                distanza3 = distanza
+                if distanza1 < distanza2 and distanza1 < distanza3:
+                    animate(scroller, tween='decelerate', duration=0.5, x=tacche[indice_calcoli - 2])
+                elif distanza2 < distanza1 and distanza2 < distanza3:
+                    animate(scroller, tween='decelerate', duration=0.5, x=tacche[indice_calcoli - 1])
+                elif distanza3 < distanza1 and distanza3 < distanza2:
+                    animate(scroller, tween='decelerate', duration=0.5, x=tacche[indice_calcoli])
+                indice = valore_indice()
+                setter_volume()
+
+
+def on_mouse_move():
+    global mode
+    global indice
+    global trascinando
+    global attivato
+    global tacche
+
+    if mode == "menu" and attivato == False:
+        if play.collidepoint(pygame.mouse.get_pos()):
+            play.state = "hover"
+        else:
+            play.state = "normale"
+
+        if options.collidepoint(pygame.mouse.get_pos()):
+            options.state = "hover"
+        else:
+            options.state = "normale"
+
+        if exit.collidepoint(pygame.mouse.get_pos()):
+            exit.state = "hover"
+        else:
+            exit.state = "normale"
+    
+    elif mode == "impostazioni":
+        if trascinando == True:
+            if pygame.mouse.get_pos()[0] < scroll_bar.midleft[0] + 10:
+                scroller.x = tacche[0]
+                indice = 0
+            elif pygame.mouse.get_pos()[0] > scroll_bar.midright[0] - 10:
+                scroller.x = tacche[10]
+                indice = 11
+            else:
+                scroller.x = pygame.mouse.get_pos()[0]
+        if scroller.center[0] in tacche and trascinando == True:
+            setter_volume()
+            sounds.suono_snap_scroller.play()
+        if exit.collidepoint(pygame.mouse.get_pos()):
+            exit.state = "hover"
+        else:
+            exit.state = "normale"
+
+
+def setter_volume():
+    global volume
+    global indice
+
+    volume = indice - 1
+    volume = volume / 10
+    sounds.suono_palla_contro_roccia.set_volume(volume)
+    sounds.suono_pressione_pulsante.set_volume(volume)
+    sounds.suono_rottura_roccia.set_volume(volume)
+    sounds.suono_schianto_roccia.set_volume(volume)
+    sounds.suono_snap_scroller.set_volume(volume)
+    sounds.suono_sparo.set_volume(volume)
+
+
 def draw_menu():
     global mode
 
     screen.blit("sfondo_caverna", (0, 0))
     for r in rocce_menu:
         r.draw()
-    play.draw()
-    options.draw()
+    if play.state == "normale":
+        play.draw()
+    elif play.state == "hover":
+        play_h.draw()
+    elif play.state == "premuto":
+        play_p.draw()
+    if options.state == "normale":
+        options.draw()
+    elif options.state == "hover":
+        options_h.draw()
+    elif options.state == "premuto":
+        options_p.draw()
+    if exit.state == "normale":
+        exit.draw()
+    elif exit.state == "hover":
+        exit_h.draw()
+    elif exit.state == "premuto":
+        exit_p.draw()
+
+
+def draw_imp():
+    global mode
+
+    screen.blit("sfondo_caverna", (0, 0))
+    volume_t.draw()
+    scroll_bar.draw()
+    scroller.draw()
     exit.draw()
 
-    if play.collidepoint(pygame.mouse.get_pos()):
-        play_h.draw()
-        if pygame.mouse.get_pressed()[0]:  # se il tasto sinistro del mouse è premuto
-            mode = "gioco"
-            inizio()
-            return  # esce subito, non aggiorna nulla
-    elif options.collidepoint(pygame.mouse.get_pos()):
-        options_h.draw()
-        return
-    elif exit.collidepoint(pygame.mouse.get_pos()):
-        exit_h.draw()
-        if pygame.mouse.get_pressed()[0]:  # se il tasto sinistro del mouse è premuto
+
+def geometria_analitica(x1, x2):
+    global distanza
+
+    radice = (x2 - x1) ** 2
+    distanza = math.sqrt(radice)
+    return distanza
+
+
+def valore_indice():
+    global tacche
+    global scroller
+    global indice
+
+    if scroller.center[0] == tacche[0]:
+        indice = 1
+    elif scroller.center[0] == tacche[1]:
+        indice = 2
+    elif scroller.center[0] == tacche[2]:
+        indice = 3
+    elif scroller.center[0] == tacche[3]:
+        indice = 4
+    elif scroller.center[0] == tacche[4]:
+        indice = 5
+    elif scroller.center[0] == tacche[5]:
+        indice = 6
+    elif scroller.center[0] == tacche[6]:
+        indice = 7
+    elif scroller.center[0] == tacche[7]:
+        indice = 8
+    elif scroller.center[0] == tacche[8]:
+        indice = 9
+    elif scroller.center[0] == tacche[9]:
+        indice = 10
+    elif scroller.center[0] == tacche[10]:
+        indice = 11
+    return indice
+
+
+def pulsante_play():
+    risposta_pulsante(play)
+
+
+def pulsante_exit():
+    risposta_pulsante(exit)
+
+
+def pulsante_options():
+    risposta_pulsante(options)
+
+
+def risposta_pulsante(pulsante):
+    global mode
+    print("Ciao scemo, hai cliccato ma per qualche motivo non si attiva")
+    if pulsante is play:
+        mode = "gioco"
+        inizio()
+        return  # esce subito, non aggiorna nulla
+    elif pulsante is exit:
+        if mode == "menu":
             raise SystemExit
+        elif mode == "impostazioni":
+            mode = "menu"
+            return  # esce subito, non aggiorna nulla
+    elif pulsante is options:
+        mode = "impostazioni"
+        return  # esce subito, non aggiorna nulla
 
 
 def draw_gioco():
@@ -407,11 +687,13 @@ def gioco():
     if dueframe % 1 == 0:
         if len(palle_cannone) == 0:
             palla_cannone = Actor("palla_cannone",(cannone.x, 380))
+            sounds.suono_sparo.play()
             palle_cannone.append(palla_cannone)
         else:
             palla_cannone = palle_cannone[len(palle_cannone) - 1]
             if palla_cannone.y <= 285:
                 palla_cannone = Actor("palla_cannone",(cannone.x, 380))
+                sounds.suono_sparo.play()
                 palle_cannone.append(palla_cannone)
     
         for i in range(len(palle_cannone) - 1, -1, -1):
@@ -452,10 +734,10 @@ def gioco():
 
     for  i in range (len(rocce)):        
         if rocce[i].lato == 2:
-            rocce[i].x = rocce[i].x - roccia.velocità
+            rocce[i].x = rocce[i].x - rocce[i].velocità
         
         elif rocce[i].lato == 1:
-            rocce[i].x = rocce[i].x + roccia.velocità    
+            rocce[i].x = rocce[i].x + rocce[i].velocità
         
     #elif roccia.x <= -300:
         
@@ -480,12 +762,16 @@ def collisions():
                 # Rimuovi la palla
                 palle_cannone.pop(j)
 
+                # Evviva, i suoni!
+                sounds.suono_palla_contro_roccia.play()
+
                 # Applica danno
                 rocce[i].salute -= danno
 
-                # Se la roccia è morta → uccidila SUBITO
+                # Se la roccia è morta uccidila SUBITO
                 if rocce[i].salute < 1:
                     uccidi_roccia(i)
+                    sounds.suono_rottura_roccia.play()
                     break  # interrompe il ciclo delle palle, la roccia non esiste più
 
 
@@ -542,7 +828,7 @@ def movimento():
         
         
         if roccia.cade == 1:
-            #print("giu", roccia.y)
+            #print("giù", roccia.y)
             animate(roccia, tween='accelerate', duration=2, y = roccia.suolo)
             #roccia.y += 5
             roccia.cade = 2
@@ -550,6 +836,7 @@ def movimento():
         elif roccia.y >= roccia.suolo and roccia.cade == 2:
             roccia.cade = 3
             roccia.cadem = 3
+            sounds.suono_schianto_roccia.play()
             
         elif roccia.cade == 3:
             #print("su", roccia.y)

@@ -3,6 +3,7 @@
 import pygame
 import pgzrun
 import random
+import math
 
 WIDTH = 1024
 HEIGHT = 512
@@ -48,6 +49,39 @@ exit_p.pos = (WIDTH // 2, HEIGHT // 2 + 175)
 play.state = "normale"
 options.state = "normale"
 exit.state = "normale"
+
+#volumes
+volume_impostato = 0
+volume_generale = 1.0
+trascinando = False
+bordo_sx = 512 - 181
+
+tacche = [
+    bordo_sx + 31,
+    bordo_sx + 61,
+    bordo_sx + 91,
+    bordo_sx + 121,
+    bordo_sx + 151,
+    bordo_sx + 181,
+    bordo_sx + 211,
+    bordo_sx + 241,
+    bordo_sx + 271,
+    bordo_sx + 301,
+    bordo_sx + 331
+]
+
+
+indice = 10 #100%
+indice_calcoli = indice
+volume = 1.0
+volume_calcoli = volume
+volume_t = Actor("volume")
+volume_t.pos = (WIDTH // 2, HEIGHT // 2 + 100)
+scroll_bar = Actor("scroll_bar")
+scroll_bar.pos = (WIDTH // 2, HEIGHT // 2 + 120)
+scroller = Actor("scroller")
+scroller.x = tacche[indice]
+scroller.y = HEIGHT//2 + 120
 
 #rocks
 #roccia_blu = Actor('roccia_blu')
@@ -270,6 +304,9 @@ def draw():
         pausa_i.draw()
         return
 
+    elif mode == "impostazioni":
+        draw_imp()
+        return
 
     elif mode == "sconfitta":
         hai_perso.draw()
@@ -282,7 +319,8 @@ def draw():
 
 def on_mouse_down(pos):
     global mode
-
+    global trascinando
+    print("x barra =", scroll_bar.x)
     if mode == "menu" and attivato == False:
         if play.collidepoint(pos):
             play.state = "premuto"
@@ -294,11 +332,24 @@ def on_mouse_down(pos):
             exit.state = "premuto"
             sounds.suono_pressione_pulsante.play()
 
+    elif mode == "impostazioni":
+        if scroll_bar.collidepoint(pos):
+            trascinando = True
+        elif exit.collidepoint(pos):
+            exit.state = "premuto"
+            sounds.suono_pressione_pulsante.play()
+
 
 def on_mouse_up(pos):
     global mode
     global attivato
-
+    global trascinando
+    global volume_calcoli
+    global indice
+    global indice_calcoli
+    global distanza
+    print("posizione di rilascio mouse:", pygame.mouse.get_pos())
+    print("posizione tacca 5 =", tacche[4])
     if mode == "menu" and attivato == False:
         if play.collidepoint(pos):
             play.state = "normale"
@@ -310,10 +361,48 @@ def on_mouse_up(pos):
             clock.schedule_unique(pulsante_exit, 0.5)  # chiama la funzione dopo 0.5 secondi
             attivato = True
             #risposta_pulsante(exit)
+        elif options.collidepoint(pos):
+            options.state = "normale"
+            clock.schedule_unique(pulsante_options, 0.5)  # chiama la funzione dopo 0.5 secondi
+            attivato = True
+    
+    elif mode == "impostazioni":
+        if not trascinando:
+            if exit.collidepoint(pos):
+                exit.state = "normale"
+                clock.schedule_unique(pulsante_exit, 0.5)
+                attivato = True
+        else:
+            # abbiamo finito di trascinare: snap alla tacca più vicina
+            trascinando = False
+
+            x = scroller.center[0]
+
+            # trova la tacca più vicina
+            migliore_tacca = tacche[0]
+            migliore_dist = abs(x - tacche[0])
+            migliore_indice = 0
+
+            for i in range(1, len(tacche)):
+                d = abs(x - tacche[i])
+                if d < migliore_dist:
+                    migliore_dist = d
+                    migliore_tacca = tacche[i]
+                    migliore_indice = i
+
+            # snap
+            animate(scroller, tween='decelerate', duration=0.2, x=migliore_tacca)
+            indice = migliore_indice
+            setter_volume()
+            sounds.suono_snap_scroller.play()
 
 
 def on_mouse_move():
     global mode
+    global indice
+    global trascinando
+    global attivato
+    global tacche
 
     if mode == "menu" and attivato == False:
         if play.collidepoint(pygame.mouse.get_pos()):
@@ -330,6 +419,41 @@ def on_mouse_move():
             exit.state = "hover"
         else:
             exit.state = "normale"
+    
+    elif mode == "impostazioni":
+        mx, my = pygame.mouse.get_pos()
+
+        if trascinando:
+            # limiti reali: bordo barra tenendo conto della metà dello scroller
+            lim_sx = scroll_bar.left + scroller.width // 2
+            lim_dx = scroll_bar.right - scroller.width // 2
+
+            if mx <= lim_sx:
+                scroller.x = tacche[0]
+                indice = 0
+            elif mx >= lim_dx:
+                scroller.x = tacche[10]
+                indice = 10
+            else:
+                scroller.x = mx
+
+        if exit.collidepoint((mx, my)):
+            exit.state = "hover"
+        else:
+            exit.state = "normale"
+
+
+def setter_volume():
+    global volume
+    global indice
+
+    volume = indice / 10
+    sounds.suono_palla_contro_roccia.set_volume(volume)
+    sounds.suono_pressione_pulsante.set_volume(volume)
+    sounds.suono_rottura_roccia.set_volume(volume)
+    sounds.suono_schianto_roccia.set_volume(volume)
+    sounds.suono_snap_scroller.set_volume(volume)
+    sounds.suono_sparo.set_volume(volume)
 
 
 def draw_menu():
@@ -358,12 +482,64 @@ def draw_menu():
         exit_p.draw()
 
 
+def draw_imp():
+    global mode
+
+    screen.blit("sfondo_caverna", (0, 0))
+    volume_t.draw()
+    scroll_bar.draw()
+    scroller.draw()
+    exit.draw()
+
+
+def geometria_analitica(x1, x2):
+    global distanza
+
+    radice = (x2 - x1) ** 2
+    distanza = math.sqrt(radice)
+    return distanza
+
+
+def valore_indice():
+    global tacche
+    global scroller
+    global indice
+
+    if scroller.center[0] == tacche[0]:
+        indice = 0
+    elif scroller.center[0] == tacche[1]:
+        indice = 1
+    elif scroller.center[0] == tacche[2]:
+        indice = 2
+    elif scroller.center[0] == tacche[3]:
+        indice = 3
+    elif scroller.center[0] == tacche[4]:
+        indice = 4
+    elif scroller.center[0] == tacche[5]:
+        indice = 5
+    elif scroller.center[0] == tacche[6]:
+        indice = 6
+    elif scroller.center[0] == tacche[7]:
+        indice = 7
+    elif scroller.center[0] == tacche[8]:
+        indice = 8
+    elif scroller.center[0] == tacche[9]:
+        indice = 9
+    elif scroller.center[0] == tacche[10]:
+        indice = 10
+    return indice
+
+
 def pulsante_play():
     risposta_pulsante(play)
 
 
 def pulsante_exit():
     risposta_pulsante(exit)
+
+
+def pulsante_options():
+    risposta_pulsante(options)
 
 
 def risposta_pulsante(pulsante):
@@ -374,7 +550,14 @@ def risposta_pulsante(pulsante):
         inizio()
         return  # esce subito, non aggiorna nulla
     elif pulsante is exit:
-        raise SystemExit
+        if mode == "menu":
+            raise SystemExit
+        elif mode == "impostazioni":
+            mode = "menu"
+            return  # esce subito, non aggiorna nulla
+    elif pulsante is options:
+        mode = "impostazioni"
+        return  # esce subito, non aggiorna nulla
 
 
 def draw_gioco():
