@@ -7,6 +7,7 @@ import math
 
 WIDTH = 1024
 HEIGHT = 512
+FPS = 60
 
 #cannon
 cannone = Actor('cannone',(512, 427))
@@ -26,6 +27,7 @@ numero_7 = Actor("numero_7")
 numero_8 = Actor("numero_8")
 numero_9 = Actor("numero_9")
 numero_0 = Actor("numero_0")
+numero_più = Actor("numero_più")
 
 #buttons
 play = Actor("play_button")
@@ -83,6 +85,10 @@ scroller = Actor("scroller")
 scroller.x = tacche[indice]
 scroller.y = HEIGHT//2 + 10
 
+#animations
+
+animazioni_morte = []
+
 #rocks
 #roccia_blu = Actor('roccia_blu')
 #roccia_rossa = Actor("roccia_rossa")
@@ -130,6 +136,7 @@ def inizio():
     M_VD = 3 + salute_aggiuntiva
     danno = 1
     mode = "gioco"
+    animazioni_morte.clear()
     
     #Creazione rocce
     cannone.x = cannone.x_iniziale
@@ -293,6 +300,27 @@ def draw_salute_roccia(roccia):
         x += 20
 
 
+def crea_animazione_morte(roccia, punteggio_aggiunto):
+
+    valore_agg = int(punteggio_aggiunto)
+    valore_agg_str = str(valore_agg)
+
+    x_an = roccia.x + 8
+    y_an = roccia.y
+
+    larghezza_totale_an = len(valore_agg_str) * 20
+    x_an = x_an - larghezza_totale_an // 2
+    
+    animazione = {
+        "x_an": x_an,
+        "y_an": y_an,
+        "timer": 120,
+        "valore_agg_str": valore_agg_str
+    }
+
+    animazioni_morte.append(animazione)
+
+
 def draw():
     global mode
     
@@ -320,7 +348,6 @@ def draw():
 def on_mouse_down(pos):
     global mode
     global trascinando
-    print("x barra =", scroll_bar.x)
     if mode == "menu" and attivato == False:
         if play.collidepoint(pos):
             play.state = "premuto"
@@ -603,9 +630,23 @@ def draw_gioco():
     screen.draw.text(str(danno), (512, 10), color=(255, 198, 41))
     screen.draw.text(str(salute_mostrata), (940, 10), color= "red")
 
-    screen.draw.text("score", (20, 472), color= "white")
-    screen.draw.text("damage", (465, 472), color=(255, 198, 41))
-    screen.draw.text("rock's health", (810, 472), color= "red")
+    screen.draw.text("score", (20, 480), color= "white")
+    screen.draw.text("damage", (465, 480), color=(255, 198, 41))
+    screen.draw.text("future rock's health", (810, 480), color= "red")
+
+    for animazione in animazioni_morte:
+        x_t = animazione["x_an"]
+        y_t = animazione["y_an"]
+        numero_più.pos = (x_t, y_t)
+        numero_più.draw()
+        x_t += 20
+        x_tn = x_t
+
+        for cifra_an in animazione["valore_agg_str"]:
+            numero_an = Actor("numero_" + cifra_an)
+            numero_an.pos = (x_tn, y_t)
+            numero_an.draw()
+            x_tn += 20
 
 
 def on_key_down(key):
@@ -660,6 +701,16 @@ def update(df):
     
     elif mode == "gioco":
         gioco()
+        gestione_animazioni()
+
+
+def gestione_animazioni():
+    for j in range(len(animazioni_morte)-1, -1, -1):
+        animazione = animazioni_morte[j]
+        animazione["timer"] -= 1
+        animazione["y_an"] -= 0.5
+        if animazione["timer"] <= 0:
+            animazioni_morte.pop(j)
 
 
 def gioco():
@@ -770,7 +821,11 @@ def collisions():
 
 
 def uccidi_roccia(i):
-    global punteggio, danno, M_VU, M_VD, salute_aggiuntiva
+    global punteggio
+    global danno
+    global M_VU
+    global M_VD
+    global salute_aggiuntiva
 
     salute_aggiuntiva = random.randint(1, 2)
     M_VU += salute_aggiuntiva
@@ -779,11 +834,13 @@ def uccidi_roccia(i):
     valore = 5
 
     if rocce[i].tipo == "roccia_rossa":
-        valore = 50
+        valored = random.randint(-1, 3) * 10
+        valore = valored + 50
 
     elif rocce[i].tipo == "roccia_verde_s":
         dannop = random.randint(2, 5)
         danno += dannop
+        valore = 0
 
     elif rocce[i].tipo == "roccia":
         roccia_destra = crea_roccia("roccia_s", 1)
@@ -796,6 +853,11 @@ def uccidi_roccia(i):
 
         rocce.append(roccia_destra)
         rocce.append(roccia_sinistra)
+
+        valore = 10
+
+    # Prima di rimuovere la roccia, dici alla funzione quale roccia vuole l'animazione
+    crea_animazione_morte(rocce[i], valore)
 
     # Rimuovi la roccia
     rocce.pop(i)
