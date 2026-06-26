@@ -136,7 +136,7 @@ def inizio():
     M_VD = 3 + salute_aggiuntiva
     danno = 1
     mode = "gioco"
-    animazioni_morte.clear
+    animazioni_morte.clear()
     
     #Creazione rocce
     cannone.x = cannone.x_iniziale
@@ -524,10 +524,8 @@ def draw_imp():
     scroller.draw()
 
 
-def geometria_analitica(x1, x2):
-    global distanza
-
-    radice = (x2 - x1) ** 2
+def geometria_analitica(x1, x2, y1, y2):
+    radice = (x2 - x1) ** 2 + (y2 - y1) ** 2
     distanza = math.sqrt(radice)
     return distanza
 
@@ -794,11 +792,35 @@ def gioco():
 def collisions():
     global mode, punteggio, danno, salute, M_VU, M_VD, salute_aggiuntiva
 
+    punti_cannone = [
+        hitbox_cannone.topleft,
+        hitbox_cannone.topright,
+        hitbox_cannone.midleft,
+        hitbox_cannone.midright
+    ]
+
     # Controllo collisione cannone → sconfitta
+    for i in range(len(rocce)-1, -1, -1):
+
+        roccia = rocce[i]
+        if roccia.tipo ==  "roccia_s" or roccia.tipo == "roccia_verde_s":
+            raggio = 35
+        elif roccia.tipo == "roccia":
+            raggio = 70
+        else:
+            raggio = 105
+
+        rx = rocce[i].x
+        ry = rocce[i].y
+        for (px, py) in punti_cannone:
+            if geometria_analitica(rx, px, ry, py) <= raggio:
+                mode = "sconfitta"
+                return
+
     for i in range(len(rocce) - 1, -1, -1):
-        if hitbox_cannone.colliderect(rocce[i]):
-            mode = "sconfitta"
-            return
+        #if hitbox_cannone.colliderect(rocce[i]):
+        #    mode = "sconfitta"
+        #    return
 
         # Controllo collisioni con le palle
         for j in range(len(palle_cannone) - 1, -1, -1):
@@ -903,10 +925,15 @@ def movimento():
         elif roccia.y <= roccia.y_partenza + 1 and roccia.cade == 2:
             roccia.cade = 1
             roccia.cadem = 1
+
+        if roccia.velocità <= 6:
+            roccia.angle += 5
             
         if roccia.x >= 1300 or roccia.x <= -300:
             
             rocce.pop(i)
             roccia = crea_roccia()
             rocce.append(roccia)
+
+
 pgzrun.go()
