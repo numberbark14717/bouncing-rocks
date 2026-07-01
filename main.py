@@ -820,24 +820,32 @@ def collisions():
 
         # Controllo collisioni con le palle
         for j in range(len(palle_cannone) - 1, -1, -1):
-            px = palle_cannone[j].x
-            py = palle_cannone[j].y
-            if geometria_analitica(rx, px, ry, py) <= raggio:
 
-                # Rimuovi la palla
+            p = palle_cannone[j]
+
+            punti_palla = [
+                p.midtop,
+                p.midbottom,
+                p.midleft,
+                p.midright
+            ]
+
+            colpita = False
+
+            for (px, py) in punti_palla:
+                if geometria_analitica(rx, px, ry, py) <= raggio:
+                    colpita = True
+                    break
+
+            if colpita:
                 palle_cannone.pop(j)
-
-                # Evviva, i suoni!
                 sounds.suono_palla_contro_roccia.play()
-
-                # Applica danno
                 rocce[i].salute -= danno
 
-                # Se la roccia è morta uccidila SUBITO
                 if rocce[i].salute < 1:
                     uccidi_roccia(i)
                     sounds.suono_rottura_roccia.play()
-                    break  # interrompe il ciclo delle palle, la roccia non esiste più
+                break
 
 
 def uccidi_roccia(i):
