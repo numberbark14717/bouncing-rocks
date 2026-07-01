@@ -113,6 +113,22 @@ cannone.x_iniziale = 512
 mode = inizio
 dueframe = 0
 attivato = False
+maggiore = False
+timer_color = 0
+
+
+def carica_record():
+    global record_precedente1, record_precedente2, record_precedente3
+    try:
+        with open("record.txt", "r") as f:
+            linee = f.read().splitlines()
+            record_precedente1 = int(linee[0])
+            record_precedente2 = int(linee[1])
+            record_precedente3 = int(linee[2])
+    except:
+        record_precedente1 = 0
+        record_precedente2 = 0
+        record_precedente3 = 0
 
 
 def inizio():
@@ -127,6 +143,8 @@ def inizio():
     global salute_mostrata
     global M_VU
     global M_VD
+    global maggiore
+    global timer_color
     
     hitbox_cannone.x = cannone.x_iniziale + 0
     punteggio = 0
@@ -137,7 +155,10 @@ def inizio():
     danno = 1
     mode = "gioco"
     animazioni_morte.clear()
-    
+    maggiore = False
+    timer_color = 0
+    carica_record()
+
     #Creazione rocce
     cannone.x = cannone.x_iniziale
     palle_cannone = []
@@ -337,7 +358,7 @@ def draw():
         return
 
     elif mode == "sconfitta":
-        hai_perso.draw()
+        draw_sconfitta()
         return # esce subito, non aggiorna nulla
     
     elif mode == "gioco":
@@ -363,6 +384,11 @@ def on_mouse_down(pos):
         if scroll_bar.collidepoint(pos):
             trascinando = True
         elif exit.collidepoint(pos):
+            exit.state = "premuto"
+            sounds.suono_pressione_pulsante.play()
+
+    elif mode == "sconfitta":
+        if exit.collidepoint(pos):
             exit.state = "premuto"
             sounds.suono_pressione_pulsante.play()
 
@@ -421,6 +447,12 @@ def on_mouse_up(pos):
             setter_volume()
             sounds.suono_snap_scroller.play()
 
+    elif mode == "sconfitta":
+        if exit.collidepoint(pos):
+            exit.state = "normale"
+            clock.schedule_unique(pulsante_exit, 0.5)
+            attivato = True
+
 
 def on_mouse_move():
     global mode
@@ -463,6 +495,12 @@ def on_mouse_move():
                 scroller.x = mx
 
         if exit.collidepoint((mx, my)):
+            exit.state = "hover"
+        else:
+            exit.state = "normale"
+
+    elif mode == "sconfitta":
+        if exit.collidepoint(pygame.mouse.get_pos()):
             exit.state = "hover"
         else:
             exit.state = "normale"
@@ -522,6 +560,59 @@ def draw_imp():
     volume_t.draw()
     scroll_bar.draw()
     scroller.draw()
+
+
+def draw_sconfitta():
+    global mode
+    global record_precedente1
+    global record_precedente2
+    global record_precedente3
+    global maggiore
+
+    hai_perso.draw()
+    screen.draw.text(str(record_precedente1), midtop=(WIDTH//2, 35), color="gold", fontsize=50)
+    screen.draw.text(str(record_precedente2), midtop=(WIDTH//2, 75), color="gray", fontsize=45)
+    screen.draw.text(str(record_precedente3), midtop=(WIDTH//2, 110), color= "brown", fontsize=30)
+    if exit.state == "normale":
+        exit.draw()
+    elif exit.state == "hover":
+        exit_h.draw()
+    elif exit.state == "premuto":
+        exit_p.draw()
+    
+    if maggiore:
+        draw_new_record()
+
+
+def draw_new_record():
+    global timer_color
+
+    # ciclo dei colori arcobaleno
+    colori = [
+        (255,0,0),
+        (255,127,0),
+        (255,255,0),
+        (0,255,0),
+        (0,0,255),
+        (75,0,130),
+        (148,0,211)
+    ]
+
+    colore = colori[timer_color // 10 % len(colori)]
+
+    # prendi l'immagine originale
+    img = pygame.image.load("images/new_record.png").convert_alpha()
+
+    # crea una copia colorata
+    img_colorata = img.copy()
+    img_colorata.fill(colore, special_flags=pygame.BLEND_RGBA_MULT)
+
+    # disegna
+    x = WIDTH//2 - img_colorata.get_width()//2
+    y = 170 - img_colorata.get_height()//2
+    screen.blit(img_colorata, (x, y))
+
+    timer_color += 1
 
 
 def geometria_analitica(x1, x2, y1, y2):
@@ -588,6 +679,9 @@ def risposta_pulsante(pulsante):
             mode = "menu"
             attivato = False
             return  # esce subito, non aggiorna nulla
+        elif mode == "sconfitta":
+            mode = "menu"
+            attivato = False
     elif pulsante is options:
         mode = "impostazioni"
         attivato = False
@@ -601,6 +695,7 @@ def draw_gioco():
     global salute_mostrata
     global M_VU
     global M_VD
+    global maggiore
 
     # ottieni la dimensione attuale della finestra 
     w, h = screen.surface.get_size()               #ok
@@ -626,11 +721,11 @@ def draw_gioco():
     #roccia_s.draw()                #ok
     
     screen.draw.text(str(punteggio), (20, 10), color="white")
-    screen.draw.text(str(danno), (512, 10), color=(255, 198, 41))
+    screen.draw.text(str(danno), midtop=(WIDTH//2, 10), color=(255, 198, 41))
     screen.draw.text(str(salute_mostrata), (940, 10), color= "red")
 
     screen.draw.text("score", (20, 480), color= "white")
-    screen.draw.text("damage", (465, 480), color=(255, 198, 41))
+    screen.draw.text("damage", midtop=(WIDTH//2, 480), color=(255, 198, 41))
     screen.draw.text("future rock's health", (810, 480), color= "red")
 
     for animazione in animazioni_morte:
@@ -646,6 +741,34 @@ def draw_gioco():
             numero_an.pos = (x_tn, y_t)
             numero_an.draw()
             x_tn += 20
+
+
+def salva_record():
+    with open("record.txt", "w") as f:
+        f.write(str(record_precedente1) + "\n")
+        f.write(str(record_precedente2) + "\n")
+        f.write(str(record_precedente3) + "\n")
+
+
+def gestione_punteggi_migliori(record):
+    global record_precedente1, record_precedente2, record_precedente3, maggiore
+
+    if record > record_precedente1:
+        record_precedente3 = record_precedente2
+        record_precedente2 = record_precedente1
+        record_precedente1 = record
+        maggiore = True
+
+    elif record > record_precedente2:
+        record_precedente3 = record_precedente2
+        record_precedente2 = record
+        maggiore = True
+
+    elif record > record_precedente3:
+        record_precedente3 = record
+        maggiore = True
+
+    salva_record()
 
 
 def on_key_down(key):
@@ -816,6 +939,7 @@ def collisions():
         for (cx, cy) in punti_cannone:
             if geometria_analitica(rx, cx, ry, cy) <= raggio:
                 mode = "sconfitta"
+                gestione_punteggi_migliori(punteggio)
                 return
 
         # Controllo collisioni con le palle
@@ -938,5 +1062,7 @@ def movimento():
             roccia = crea_roccia()
             rocce.append(roccia)
 
+
+carica_record()
 
 pgzrun.go()
