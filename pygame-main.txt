@@ -1,56 +1,224 @@
-#pgzero
-
 import pygame
-import pgzrun
 import random
 import math
 
+pygame.init()
+pygame.mixer.init()
+
 WIDTH = 1024
 HEIGHT = 512
-FPS = 60
+FPS = 70
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("Bouncing rocks")
+font = pygame.font.Font(None, 36)
+animazioni = []
+eventi_programmati = []
+keyboard = pygame.key.get_pressed()
+
+
+class Sprite:
+    def __init__(self, image, center=None):
+        self.image = image
+        self.rect = image.get_rect()
+        if center is not None:
+            self.rect.center = center
+
+    @property
+    def x(self):
+        return self.rect.centerx
+
+    @x.setter
+    def x(self, value):
+        self.rect.centerx = round(value)
+
+    @property
+    def y(self):
+        return self.rect.centery
+
+    @y.setter
+    def y(self, value):
+        self.rect.centery = round(value)
+
+    @property
+    def pos(self):
+        return self.rect.center
+
+    @pos.setter
+    def pos(self, value):
+        self.rect.center = value
+
+    @property
+    def center(self):
+        return self.rect.center
+
+    @property
+    def width(self):
+        return self.rect.width
+
+    @property
+    def left(self):
+        return self.rect.left
+
+    @property
+    def right(self):
+        return self.rect.right
+
+    @property
+    def topleft(self):
+        return self.rect.topleft
+
+    @property
+    def topright(self):
+        return self.rect.topright
+
+    @property
+    def midleft(self):
+        return self.rect.midleft
+
+    @property
+    def midright(self):
+        return self.rect.midright
+
+    @property
+    def midtop(self):
+        return self.rect.midtop
+
+    @property
+    def midbottom(self):
+        return self.rect.midbottom
+
+    def get_rect(self, **kwargs):
+        return self.image.get_rect(**kwargs)
+
+    def collidepoint(self, point):
+        return self.rect.collidepoint(point)
+
+    def draw(self):
+        screen.blit(self.image, self.rect)
+
+
+def sprite_from_file(path, center=None):
+    return Sprite(pygame.image.load(path).convert_alpha(), center)
+
+
+class Suoni:
+    def __init__(self):
+        self.suono_palla_contro_roccia = pygame.mixer.Sound("sounds/suono_palla_contro_roccia.ogg")
+        self.suono_pressione_pulsante = pygame.mixer.Sound("sounds/suono_pressione_pulsante.ogg")
+        self.suono_rottura_roccia = pygame.mixer.Sound("sounds/suono_rottura_roccia.ogg")
+        self.suono_schianto_roccia = pygame.mixer.Sound("sounds/suono_schianto_roccia.ogg")
+        self.suono_snap_scroller = pygame.mixer.Sound("sounds/suono_snap_scroller.ogg")
+        self.suono_sparo = pygame.mixer.Sound("sounds/suono_sparo.ogg")
+
+
+sounds = Suoni()
+
+
+def testo(stringa, posizione, color="white", fontsize=36, midtop=None):
+    superficie = pygame.font.Font(None, fontsize).render(stringa, True, pygame.Color(color))
+    rettangolo = superficie.get_rect()
+    if midtop is not None:
+        rettangolo.midtop = midtop
+    else:
+        rettangolo.topleft = posizione
+    screen.blit(superficie, rettangolo)
+
+
+def animate(sprite, tween="linear", duration=1, **target):
+    animazioni[:] = [a for a in animazioni if a["sprite"] is not sprite]
+    animazioni.append({
+        "sprite": sprite,
+        "target": target,
+        "start": {nome: getattr(sprite, nome) for nome in target},
+        "elapsed": 0.0,
+        "duration": max(float(duration), 1 / FPS),
+        "tween": tween,
+    })
+
+
+def aggiorna_animazioni(dt):
+    for animazione in animazioni[:]:
+        animazione["elapsed"] += dt
+        percentuale = min(animazione["elapsed"] / animazione["duration"], 1.0)
+        if animazione["tween"] == "accelerate":
+            percentuale *= percentuale
+        elif animazione["tween"] == "decelerate":
+            percentuale = 1 - (1 - percentuale) ** 2
+        for nome, valore in animazione["target"].items():
+            iniziale = animazione["start"][nome]
+            setattr(animazione["sprite"], nome, iniziale + (valore - iniziale) * percentuale)
+        if percentuale >= 1.0:
+            animazioni.remove(animazione)
+
+
+def programma_unica(funzione, ritardo):
+    eventi_programmati[:] = [evento for evento in eventi_programmati if evento[0] is not funzione]
+    eventi_programmati.append([funzione, float(ritardo)])
+
+
+def aggiorna_eventi_programmati(dt):
+    for evento in eventi_programmati[:]:
+        evento[1] -= dt
+        if evento[1] <= 0:
+            eventi_programmati.remove(evento)
+            evento[0]()
 
 #cannon
-cannone = Actor('cannone',(512, 427))
-hitbox_cannone = Actor("hitbox_cannone", (cannone.x + 0, cannone.y + 0))
-
-#test cannon
-cannone_prova = Actor("cannone_prova",(512,427))
+cannone = sprite_from_file("images/cannone.png", (512, 427))
+cannone_r = cannone.rect
+hitbox_cannone = sprite_from_file("images/hitbox_cannone.png", (512, 427))
+hitbox_cannone_r = hitbox_cannone.rect
 
 #numbers
-numero_1 = Actor("numero_1")
-numero_2 = Actor("numero_2")
-numero_3 = Actor("numero_3")
-numero_4 = Actor("numero_4")
-numero_5 = Actor("numero_5")
-numero_6 = Actor("numero_6")
-numero_7 = Actor("numero_7")
-numero_8 = Actor("numero_8")
-numero_9 = Actor("numero_9")
-numero_0 = Actor("numero_0")
-numero_più = Actor("numero_più")
+numero_1 = sprite_from_file("images/numero_1.png")
+numero_1_r = numero_1.get_rect()
+numero_2 = sprite_from_file("images/numero_2.png")
+numero_2_r = numero_2.get_rect()
+numero_3 = sprite_from_file("images/numero_3.png")
+numero_3_r = numero_3.get_rect()
+numero_4 = sprite_from_file("images/numero_4.png")
+numero_4_r = numero_4.get_rect()
+numero_5 = sprite_from_file("images/numero_5.png")
+numero_5_r = numero_5.get_rect()
+numero_6 = sprite_from_file("images/numero_6.png")
+numero_6_r = numero_6.get_rect()
+numero_7 = sprite_from_file("images/numero_7.png")
+numero_7_r = numero_7.get_rect()
+numero_8 = sprite_from_file("images/numero_8.png")
+numero_8_r = numero_8.get_rect()
+numero_9 = sprite_from_file("images/numero_9.png")
+numero_9_r = numero_9.get_rect()
+numero_0 = sprite_from_file("images/numero_0.png")
+numero_0_r = numero_0.get_rect()
+numero_più = sprite_from_file("images/numero_più.png")
+numero_più_r = numero_più.get_rect()
 
 #buttons
-play = Actor("play_button")
-play.pos = (WIDTH // 2, HEIGHT // 2 - 50)
-play_h = Actor("play_button_h")
-play_h.pos = (WIDTH // 2, HEIGHT // 2 - 50)
-play_p = Actor("play_button_p")
-play_p.pos = (WIDTH // 2, HEIGHT // 2 - 50)
-options = Actor("options_button")
-options.pos = (WIDTH // 2, HEIGHT // 2 + 25)
-options_h = Actor("options_button_h")
-options_h.pos = (WIDTH // 2, HEIGHT // 2 + 25)
-options_p = Actor("options_button_p")
-options_p.pos = (WIDTH // 2, HEIGHT // 2 + 25)
-exit = Actor("exit_button")
-exit.pos = (WIDTH // 2, HEIGHT // 2 + 175)
-exit_h = Actor("exit_button_h")
-exit_h.pos = (WIDTH // 2, HEIGHT // 2 + 175)
-exit_p = Actor("exit_button_p")
-exit_p.pos = (WIDTH // 2, HEIGHT // 2 + 175)
-play.state = "normale"
-options.state = "normale"
-exit.state = "normale"
+# PLAY
+play = sprite_from_file("images/play_button.png", (WIDTH // 2, HEIGHT // 2 - 50))
+play_r = play.rect
+play_h = sprite_from_file("images/play_button_h.png", (WIDTH // 2, HEIGHT // 2 - 50))
+play_h_r = play_h.rect
+play_p = sprite_from_file("images/play_button_p.png", (WIDTH // 2, HEIGHT // 2 - 50))
+play_p_r = play_p.rect
+# OPTIONS
+options = sprite_from_file("images/options_button.png", (WIDTH // 2, HEIGHT // 2 + 25))
+options_r = options.rect
+options_h = sprite_from_file("images/options_button_h.png", (WIDTH // 2, HEIGHT // 2 + 25))
+options_h_r = options_h.rect
+options_p = sprite_from_file("images/options_button_p.png", (WIDTH // 2, HEIGHT // 2 + 25))
+options_p_r = options_p.rect
+# EXIT
+exit = sprite_from_file("images/exit_button.png", (WIDTH // 2, HEIGHT // 2 + 175))
+exit_r = exit.rect
+exit_h = sprite_from_file("images/exit_button_h.png", (WIDTH // 2, HEIGHT // 2 + 175))
+exit_h_r = exit_h.rect
+exit_p = sprite_from_file("images/exit_button_p.png", (WIDTH // 2, HEIGHT // 2 + 175))
+exit_p_r = exit_p.rect
+
+play_state = "normale"
+options_state = "normale"
+exit_state = "normale"
 
 #volumes
 volume_impostato = 0
@@ -77,39 +245,32 @@ indice = 10 #100%
 indice_calcoli = indice
 volume = 1.0
 volume_calcoli = volume
-volume_t = Actor("volume")
-volume_t.pos = (WIDTH // 2, HEIGHT // 2 - 50)
-scroll_bar = Actor("scroll_bar")
-scroll_bar.pos = (WIDTH // 2, HEIGHT // 2 + 10)
-scroller = Actor("scroller")
-scroller.x = tacche[indice]
-scroller.y = HEIGHT//2 + 10
+volume_t = sprite_from_file("images/volume.png", (WIDTH // 2, HEIGHT // 2 - 50))
+volume_t_r = volume_t.rect
+scroll_bar = sprite_from_file("images/scroll_bar.png", (WIDTH // 2, HEIGHT // 2 + 10))
+scroll_bar_r = scroll_bar.rect
+scroller = sprite_from_file("images/scroller.png", (tacche[indice], HEIGHT // 2 + 10))
+scroller_r = scroller.rect
 
 #animations
 
 animazioni_morte = []
 
-#rocks
-#roccia_blu = Actor('roccia_blu')
-#roccia_rossa = Actor("roccia_rossa")
-#roccia_verde = Actor("roccia_verde")
-#roccia_s = Actor("roccia_s")
-
 #background
-sfondo_caverna = pygame.image.load("images/sfondo_caverna.png")
-hai_perso = Actor("hai_perso")
-hai_perso.pos = (WIDTH // 2, HEIGHT // 2)
-pausa_i = Actor("pausa")
-pausa_i.pos = (WIDTH // 2, HEIGHT // 2)
+sfondo_caverna = pygame.image.load("images/sfondo_caverna.png").convert()
+hai_perso = sprite_from_file("images/hai_perso.png", (WIDTH // 2, HEIGHT // 2))
+hai_perso_r = hai_perso.get_rect(center=(WIDTH // 2, HEIGHT // 2))
+pausa_i = sprite_from_file("images/pausa.png", (WIDTH // 2, HEIGHT // 2))
+pausa_i_r = pausa_i.get_rect(center=(WIDTH // 2, HEIGHT // 2))
 
-TITLE = "Bouncing rocks" # Titolo della finestra di gioco
-FPS = 70 # Numero di frame per secondo
+#variabili iniziali
+TITLE = "Bouncing rocks"
 ROCCE_TOTALI = 3
 inizio = "menu"
 palle_cannone = []
 rocce = []
 rocce_menu = []
-cannone.x_iniziale = 512
+cannone_x_iniziale = 512
 mode = inizio
 dueframe = 0
 attivato = False
@@ -146,7 +307,7 @@ def inizio():
     global maggiore
     global timer_color
     
-    hitbox_cannone.x = cannone.x_iniziale + 0
+    hitbox_cannone_r.x = cannone_x_iniziale + 0
     punteggio = 0
     salute_aggiuntiva = 0
     salute_mostrata = 0
@@ -160,7 +321,7 @@ def inizio():
     carica_record()
 
     #Creazione rocce
-    cannone.x = cannone.x_iniziale
+    cannone_r.x = cannone_x_iniziale
     palle_cannone = []
     rocce = []
     for i in range(ROCCE_TOTALI):
@@ -171,7 +332,8 @@ def inizio():
         rocce.append(roccia)
 
 
-    palla_cannone = Actor("palla_cannone",(cannone.x, 437))
+    palla_cannone = sprite_from_file("images/palla_cannone.png", (cannone_r.centerx, 437))
+    palla_cannone_r = palla_cannone.rect
     palle_cannone.append(palla_cannone)
 
 
@@ -212,24 +374,33 @@ def crea_roccia(tipo="casuale", lato=0):
                 tipo = "roccia_s"
                 
 
-    roccia = Actor(tipo)
-    roccia.tipo = tipo
+    roccia_tipo = tipo
 
     if lato == 2:
-        roccia.x = random.randint(1150, 1250)
+        roccia_x = random.randint(1150, 1250)
         
     elif lato == 1:
-        roccia.x = random.randint(-226, -126)
+        roccia_x = random.randint(-226, -126)
         
     
     # roccia.x = random.randint(24, 900)    
-    roccia.y = altezza
-    roccia.lato = lato
-    roccia.y_partenza = altezza
-    roccia.cade = 1
-    roccia.cadem = roccia.cade
-    roccia.salute = salute
-    roccia.velocità = velocità
+    roccia_y = altezza
+    roccia_lato = lato
+    roccia_y_partenza = altezza
+    roccia_cade = 1
+    roccia_cadem = roccia_cade
+    roccia_salute = salute
+    roccia_velocità = velocità
+    roccia = sprite_from_file("images/" + roccia_tipo + ".png", (roccia_x, roccia_y))
+    roccia.x = roccia_x
+    roccia.y = roccia_y
+    roccia.tipo = roccia_tipo
+    roccia.lato = roccia_lato
+    roccia.y_partenza = roccia_y_partenza
+    roccia.cade = roccia_cade
+    roccia.cadem = roccia_cadem
+    roccia.salute = roccia_salute
+    roccia.velocità = roccia_velocità
     return roccia
 
 
@@ -244,7 +415,7 @@ def crea_roccia_menu():
         if random.randint(1, 2) == 1:
             tipo = "roccia_s"
 
-    r = Actor(tipo)
+    r = sprite_from_file("images/" + tipo + ".png")
 
     lato = random.randint(1, 2)
 
@@ -279,19 +450,9 @@ def update_menu_rocce():
         else:
             r.x -= r.vel
 
-        if r.cade == 1:
-            animate(r, tween='accelerate', duration=2, y=r.suolo)
-            r.cade = 2
-
-        elif r.y >= r.suolo and r.cade == 2:
-            r.cade = 3
-
-        elif r.cade == 3:
-            animate(r, tween='decelerate', duration=2, y=r.y_partenza)
-            r.cade = 2
-
-        elif r.y <= r.y_partenza + 1 and r.cade == 2:
-            r.cade = 1
+        variazione_y = fisica(r)
+        if variazione_y is not None:
+            r.y += variazione_y
 
         if r.x < -300 or r.x > 1300:
             rocce_menu.pop(i)
@@ -314,7 +475,7 @@ def draw_salute_roccia(roccia):
 
     # disegna ogni cifra
     for cifra in salute_str:
-        numero = Actor("numero_" + cifra)
+        numero = sprite_from_file("images/numero_" + cifra + ".png")
         numero.pos = (x, y)
         numero.draw()
         x += 20
@@ -368,27 +529,30 @@ def draw():
 def on_mouse_down(pos):
     global mode
     global trascinando
+    global play_state
+    global options_state
+    global exit_state
     if mode == "menu" and attivato == False:
         if play.collidepoint(pos):
-            play.state = "premuto"
+            play_state = "premuto"
             sounds.suono_pressione_pulsante.play()
         elif options.collidepoint(pos):
-            options.state = "premuto"
+            options_state = "premuto"
             sounds.suono_pressione_pulsante.play()
         elif exit.collidepoint(pos):
-            exit.state = "premuto"
+            exit_state = "premuto"
             sounds.suono_pressione_pulsante.play()
 
     elif mode == "impostazioni":
         if scroll_bar.collidepoint(pos):
             trascinando = True
         elif exit.collidepoint(pos):
-            exit.state = "premuto"
+            exit_state = "premuto"
             sounds.suono_pressione_pulsante.play()
 
     elif mode == "sconfitta":
         if exit.collidepoint(pos):
-            exit.state = "premuto"
+            exit_state = "premuto"
             sounds.suono_pressione_pulsante.play()
 
 
@@ -400,27 +564,30 @@ def on_mouse_up(pos):
     global indice
     global indice_calcoli
     global distanza
+    global play_state
+    global options_state
+    global exit_state
     if mode == "menu" and attivato == False:
         if play.collidepoint(pos):
-            play.state = "normale"
-            clock.schedule_unique(pulsante_play, 0.5)  # chiama la funzione dopo 0.5 secondi
+            play_state = "normale"
+            programma_unica(pulsante_play, 0.5)
             #risposta_pulsante(play)
             attivato = True
         elif exit.collidepoint(pos):
-            exit.state = "normale"
-            clock.schedule_unique(pulsante_exit, 0.5)  # chiama la funzione dopo 0.5 secondi
+            exit_state = "normale"
+            programma_unica(pulsante_exit, 0.5)
             attivato = True
             #risposta_pulsante(exit)
         elif options.collidepoint(pos):
-            options.state = "normale"
-            clock.schedule_unique(pulsante_options, 0.5)  # chiama la funzione dopo 0.5 secondi
+            options_state = "normale"
+            programma_unica(pulsante_options, 0.5)
             attivato = True
     
     elif mode == "impostazioni":
         if not trascinando:
             if exit.collidepoint(pos):
-                exit.state = "normale"
-                clock.schedule_unique(pulsante_exit, 0.5)
+                exit_state = "normale"
+                programma_unica(pulsante_exit, 0.5)
                 attivato = True
         else:
             # abbiamo finito di trascinare: snap alla tacca più vicina
@@ -448,8 +615,8 @@ def on_mouse_up(pos):
 
     elif mode == "sconfitta":
         if exit.collidepoint(pos):
-            exit.state = "normale"
-            clock.schedule_unique(pulsante_exit, 0.5)
+            exit_state = "normale"
+            programma_unica(pulsante_exit, 0.5)
             attivato = True
 
 
@@ -459,22 +626,25 @@ def on_mouse_move():
     global trascinando
     global attivato
     global tacche
+    global play_state
+    global options_state
+    global exit_state
 
     if mode == "menu" and attivato == False:
         if play.collidepoint(pygame.mouse.get_pos()):
-            play.state = "hover"
+            play_state = "hover"
         else:
-            play.state = "normale"
+            play_state = "normale"
 
         if options.collidepoint(pygame.mouse.get_pos()):
-            options.state = "hover"
+            options_state = "hover"
         else:
-            options.state = "normale"
+            options_state = "normale"
 
         if exit.collidepoint(pygame.mouse.get_pos()):
-            exit.state = "hover"
+            exit_state = "hover"
         else:
-            exit.state = "normale"
+            exit_state = "normale"
     
     elif mode == "impostazioni":
         mx, my = pygame.mouse.get_pos()
@@ -494,20 +664,23 @@ def on_mouse_move():
                 scroller.x = mx
 
         if exit.collidepoint((mx, my)):
-            exit.state = "hover"
+            exit_state = "hover"
         else:
-            exit.state = "normale"
+            exit_state = "normale"
 
     elif mode == "sconfitta":
         if exit.collidepoint(pygame.mouse.get_pos()):
-            exit.state = "hover"
+            exit_state = "hover"
         else:
-            exit.state = "normale"
+            exit_state = "normale"
 
 
 def setter_volume():
     global volume
     global indice
+    global play_state
+    global options_state
+    global exit_state
 
     volume = indice / 10
     sounds.suono_palla_contro_roccia.set_volume(volume)
@@ -521,40 +694,40 @@ def setter_volume():
 def draw_menu():
     global mode
 
-    screen.blit("sfondo_caverna", (0, 0))
+    screen.blit(sfondo_caverna, (0, 0))
     for r in rocce_menu:
         r.draw()
-    if play.state == "normale":
+    if play_state == "normale":
         play.draw()
-    elif play.state == "hover":
+    elif play_state == "hover":
         play_h.draw()
-    elif play.state == "premuto":
+    elif play_state == "premuto":
         play_p.draw()
-    if options.state == "normale":
+    if options_state == "normale":
         options.draw()
-    elif options.state == "hover":
+    elif options_state == "hover":
         options_h.draw()
-    elif options.state == "premuto":
+    elif options_state == "premuto":
         options_p.draw()
-    if exit.state == "normale":
+    if exit_state == "normale":
         exit.draw()
-    elif exit.state == "hover":
+    elif exit_state == "hover":
         exit_h.draw()
-    elif exit.state == "premuto":
+    elif exit_state == "premuto":
         exit_p.draw()
 
 
 def draw_imp():
     global mode
 
-    screen.blit("sfondo_caverna", (0, 0))
+    screen.blit(sfondo_caverna, (0, 0))
     for r in rocce_menu:
         r.draw()
-    if exit.state == "normale":
+    if exit_state == "normale":
         exit.draw()
-    elif exit.state == "hover":
+    elif exit_state == "hover":
         exit_h.draw()
-    elif exit.state == "premuto":
+    elif exit_state == "premuto":
         exit_p.draw()
     volume_t.draw()
     scroll_bar.draw()
@@ -567,16 +740,19 @@ def draw_sconfitta():
     global record_precedente2
     global record_precedente3
     global maggiore
+    global play_state
+    global options_state
+    global exit_state
 
     hai_perso.draw()
-    screen.draw.text(str(record_precedente1), midtop=(WIDTH//2, 35), color="gold", fontsize=50)
-    screen.draw.text(str(record_precedente2), midtop=(WIDTH//2, 75), color="gray", fontsize=45)
-    screen.draw.text(str(record_precedente3), midtop=(WIDTH//2, 110), color= "brown", fontsize=30)
-    if exit.state == "normale":
+    testo(str(record_precedente1), (0, 0), color="gold", fontsize=50, midtop=(WIDTH//2, 35))
+    testo(str(record_precedente2), (0, 0), color="gray", fontsize=45, midtop=(WIDTH//2, 75))
+    testo(str(record_precedente3), (0, 0), color="brown", fontsize=30, midtop=(WIDTH//2, 110))
+    if exit_state == "normale":
         exit.draw()
-    elif exit.state == "hover":
+    elif exit_state == "hover":
         exit_h.draw()
-    elif exit.state == "premuto":
+    elif exit_state == "premuto":
         exit_p.draw()
     
     if maggiore:
@@ -597,14 +773,14 @@ def draw_new_record():
         (148,0,211)
     ]
 
-    colore = colori[timer_color // 10 % len(colori)]
+    color = colori[timer_color // 10 % len(colori)]
 
     # prendi l'immagine originale
     img = pygame.image.load("images/new_record.png").convert_alpha()
 
     # crea una copia colorata
     img_colorata = img.copy()
-    img_colorata.fill(colore, special_flags=pygame.BLEND_RGBA_MULT)
+    img_colorata.fill(color, special_flags=pygame.BLEND_RGBA_MULT)
 
     # disegna
     x = WIDTH//2 - img_colorata.get_width()//2
@@ -697,7 +873,7 @@ def draw_gioco():
     global maggiore
 
     # ottieni la dimensione attuale della finestra 
-    w, h = screen.surface.get_size()               #ok
+    w, h = screen.get_size()
     # ridimensiona lo sfondo 
     sfondo_scalato = pygame.transform.scale(sfondo_caverna, (w, h))          #ok
     # disegna lo sfondo scalato 
@@ -719,13 +895,13 @@ def draw_gioco():
         draw_salute_roccia(rocce[i])                   #ok
     #roccia_s.draw()                #ok
     
-    screen.draw.text(str(punteggio), (20, 10), color="white")
-    screen.draw.text(str(danno), midtop=(WIDTH//2, 10), color=(255, 198, 41))
-    screen.draw.text(str(salute_mostrata), (940, 10), color= "red")
+    testo(str(punteggio), (20, 10), color="white")
+    testo(str(danno), (0, 0), midtop=(WIDTH//2, 10), color=(255, 198, 41))
+    testo(str(salute_mostrata), (940, 10), color="red")
 
-    screen.draw.text("score", (20, 480), color= "white")
-    screen.draw.text("damage", midtop=(WIDTH//2, 480), color=(255, 198, 41))
-    screen.draw.text("future rock's health", (810, 480), color= "red")
+    testo("score", (20, 480), color="white")
+    testo("damage", (0, 0), midtop=(WIDTH//2, 480), color=(255, 198, 41))
+    testo("future rock's health", (810, 480), color="red")
 
     for animazione in animazioni_morte:
         x_t = animazione["x_an"]
@@ -736,7 +912,7 @@ def draw_gioco():
         x_tn = x_t
 
         for cifra_an in animazione["valore_agg_str"]:
-            numero_an = Actor("numero_" + cifra_an)
+            numero_an = sprite_from_file("images/numero_" + cifra_an + ".png")
             numero_an.pos = (x_tn, y_t)
             numero_an.draw()
             x_tn += 20
@@ -778,7 +954,7 @@ def on_key_down(key):
     global y
     global ym
     
-    if key == keys.P and mode == "gioco":
+    if key == pygame.K_p and mode == "gioco":
         
         mode = "pausa"  # alterna tra pausa e gioco
         
@@ -788,7 +964,7 @@ def on_key_down(key):
             #print(roccia.cadem)
             #print(roccia.cade)
         
-    elif key == keys.P and mode == "pausa":
+    elif key == pygame.K_p and mode == "pausa":
         
         mode = "gioco"
         
@@ -798,7 +974,11 @@ def on_key_down(key):
 
 
 def update(df):
-    global mode
+    global mode, keyboard
+
+    keyboard = pygame.key.get_pressed()
+    aggiorna_eventi_programmati(df)
+    aggiorna_animazioni(df)
 
     if mode == "menu" or mode == "impostazioni":
         if len(rocce_menu) < 5:
@@ -806,7 +986,7 @@ def update(df):
 
         update_menu_rocce()
 
-        if keyboard.space:
+        if keyboard[pygame.K_SPACE]:
             mode = "gioco"
             inizio()
             return
@@ -815,7 +995,7 @@ def update(df):
         return  # esce subito, non aggiorna nulla
 
     elif mode == "sconfitta":
-        if keyboard.space:
+        if keyboard[pygame.K_SPACE]:
             mode = "gioco"
             inizio()
             return  # esce subito, non aggiorna nulla    
@@ -826,7 +1006,7 @@ def update(df):
 
 
 def gestione_animazioni():
-    for j in range(len(animazioni_morte)-1, -1, -1):
+    for j in range(len(animazioni_morte) - 1, -1, -1):
         animazione = animazioni_morte[j]
         animazione["timer"] -= 1
         animazione["y_an"] -= 0.5
@@ -846,19 +1026,20 @@ def gioco():
 
 
     for i in range(len(rocce)):
+        roccia = rocce[i]
         if roccia.cade in (1, 3):
             roccia.cadem = roccia.cade
       
     #print(len(palle_cannone))
     if dueframe % 1 == 0:
         if len(palle_cannone) == 0:
-            palla_cannone = Actor("palla_cannone",(cannone.x, 380))
+            palla_cannone = sprite_from_file("images/palla_cannone.png", (cannone.x, 380))
             sounds.suono_sparo.play()
             palle_cannone.append(palla_cannone)
         else:
             palla_cannone = palle_cannone[len(palle_cannone) - 1]
             if palla_cannone.y <= 285:
-                palla_cannone = Actor("palla_cannone",(cannone.x, 380))
+                palla_cannone = sprite_from_file("images/palla_cannone.png", (cannone.x, 380))
                 sounds.suono_sparo.play()
                 palle_cannone.append(palla_cannone)
     
@@ -870,23 +1051,17 @@ def gioco():
     
     dueframe += 1
 
-    if keyboard.left and cannone.x > 51:
+    if keyboard[pygame.K_LEFT] and cannone.x > 51:
         # print("left")
         cannone.x = cannone.x - 5
         hitbox_cannone.x = hitbox_cannone.x - 5
-    elif keyboard.right and cannone.x < 973:
+    elif keyboard[pygame.K_RIGHT] and cannone.x < 973:
         #print("right")
         cannone.x = cannone.x + 5
         hitbox_cannone.x = hitbox_cannone.x + 5
-    
-    #serve per il cannone di prova
-        
-    #if keyboard.left and cannone_prova.x > 51:
-    #    cannone_prova.x = cannone_prova.x - 5
-        
-    #elif keyboard.right and cannone_prova.x < 973:
-    #    cannone_prova.x = cannone_prova.x + 5
 
+    hitbox_cannone.pos = cannone.pos
+    
     #if roccia.x >= -100 or roccia.x <= 1124:
     
     #palla_cannone.y = palla_cannone.y - 5
@@ -1017,43 +1192,17 @@ def uccidi_roccia(i):
     punteggio += valore
 
 
+def fisica(roccia):
+    pass
+
+
 def movimento():
-    global suolo
-    global cadem
-    global cade
-    
     for i in range(len(rocce) -1, -1, -1):
         roccia = rocce[i]
-        
-        #make the decision of wich height the ground is for each rock
-        roccia.suolo = 373
-        if roccia.tipo == "roccia_s" or roccia.tipo == "roccia_verde_s":
-            roccia.suolo = 435
-            
-        elif roccia.tipo == "roccia":
-            roccia.suolo = 398
-        
-        
-        if roccia.cade == 1:
-            #print("giù", roccia.y)
-            animate(roccia, tween='accelerate', duration=2, y = roccia.suolo)
-            #roccia.y += 5
-            roccia.cade = 2
-            
-        elif roccia.y >= roccia.suolo and roccia.cade == 2:
-            roccia.cade = 3
-            roccia.cadem = 3
-            sounds.suono_schianto_roccia.play()
-            
-        elif roccia.cade == 3:
-            #print("su", roccia.y)
-            animate(roccia, tween='decelerate', duration=2, y = roccia.y_partenza)
-            #roccia.y -= 5
-            roccia.cade = 2
-            
-        elif roccia.y <= roccia.y_partenza + 1 and roccia.cade == 2:
-            roccia.cade = 1
-            roccia.cadem = 1
+
+        variazione_y = fisica(roccia)
+        if variazione_y is not None:
+            roccia.y += variazione_y
             
         if roccia.x >= 1300 or roccia.x <= -300:
             
@@ -1064,4 +1213,34 @@ def movimento():
 
 carica_record()
 
-pgzrun.go()
+
+def main():
+    clock = pygame.time.Clock()
+    attivo = True
+
+    while attivo:
+        dt = clock.tick(FPS) / 1000.0
+
+        for evento in pygame.event.get():
+            if evento.type == pygame.QUIT:
+                attivo = False
+            elif evento.type == pygame.MOUSEBUTTONDOWN:
+                on_mouse_down(evento.pos)
+            elif evento.type == pygame.MOUSEBUTTONUP:
+                on_mouse_up(evento.pos)
+            elif evento.type == pygame.MOUSEMOTION:
+                on_mouse_move()
+            elif evento.type == pygame.KEYDOWN:
+                on_key_down(evento.key)
+
+        update(dt)
+        screen.fill((0, 0, 0))
+        draw()
+        pygame.display.flip()
+
+    pygame.quit()
+
+
+if __name__ == "__main__":
+    main()
+

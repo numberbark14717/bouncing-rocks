@@ -131,20 +131,6 @@ def carica_record():
         record_precedente3 = 0
 
 
-def carica_volume():
-    global indice, volume
-    try:
-        with open("volume.txt", "r") as f:
-            indice = int(f.read().strip())
-            if indice < 0 or indice > 10:
-                indice = 10
-    except:
-        indice = 10  # volume al massimo se non esiste
-    volume = indice / 10
-    setter_volume()
-    scroller.x = tacche[indice]
-
-
 def inizio():
     
     global mode
@@ -172,7 +158,6 @@ def inizio():
     maggiore = False
     timer_color = 0
     carica_record()
-    carica_volume()
 
     #Creazione rocce
     cannone.x = cannone.x_iniziale
@@ -185,7 +170,6 @@ def inizio():
         #roccia.attack = random.randint(5, 10)
         rocce.append(roccia)
 
-    
 
     palla_cannone = Actor("palla_cannone",(cannone.x, 437))
     palle_cannone.append(palla_cannone)
@@ -461,18 +445,12 @@ def on_mouse_up(pos):
             indice = migliore_indice
             setter_volume()
             sounds.suono_snap_scroller.play()
-            salva_volume()
 
     elif mode == "sconfitta":
         if exit.collidepoint(pos):
             exit.state = "normale"
             clock.schedule_unique(pulsante_exit, 0.5)
             attivato = True
-
-
-def salva_volume():
-    with open("volume.txt", "w") as f:
-        f.write(str(indice))
 
 
 def on_mouse_move():
