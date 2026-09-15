@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html>
+<body>
+
+<canvas id="schermo" width="1024" height="512"></canvas>
+
+<script>
+    //Come fargli sapere dove disegnare a schermo
+    let canvas = document.getElementById("schermo");
+
+    //Come dirgli che deve disegnare
+    let ctx = canvas.getContext("2d");
+
+    let keys = {};
+    function randint(a, b) {
+        return Math.floor(Math.random() * (b - a + 1)) + a;
+    }
+
+    let palla_cannone = new Image();
+    palla_cannone.src = "images/palla_cannone.png";
+    let palle = [];
+    let delay = 15;
+    let mode = "gioco";
+
+    let roccia_normale = new Image();
+    roccia_normale.src = "images/roccia.png";
+    let roccia_s = new Image();
+    roccia_s.src = "images/roccia_s.png";
+    let roccia_rossa = new Image();
+    roccia_rossa.src = "images/roccia_rossa.png";
+    let roccia_verde = new Image();
+    roccia_verde.src = "images/roccia_verde_s.png";
+    let rocce = [];
+    let metà_roccia = 0;
+    let salute_aggiuntiva = 0;
+    let M_VU = 2 + salute_aggiuntiva;
+    let M_VD = 3 + salute_aggiuntiva;
+    let punteggio = 0;
+    let lato = 0;
+    let altezza = 0;
+    let velocità = 0;
+    let suolo = null;
+    let salute_mostrata = (M_VU + M_VD) / 2
+
+    let zero = new Image();
+    zero.src = "images/numero_0.png";
+    let uno = new Image();
+    uno.src = "images/numero_1.png";
+    let due = new Image();
+    due.src = "images/numero_2.png";
+    let tre = new Image();
+    tre.src = "images/numero_3.png";
+    let quattro = new Image();
+    quattro.src = "images/numero_4.png";
+    let cinque = new Image();
+    cinque.src = "images/numero_5.png";
+    let sei = new Image();
+    sei.src = "images/numero_6.png";
+    let sette = new Image();
+    sette.src = "images/numero_7.png";
+    let otto = new Image();
+    otto.src = "images/numero_8.png";
+    let nove = new Image();
+    nove.src = "images/numero_9.png";
+    let più = new Image();
+    più.src = "images/numero_più.png";
+    let meno = new Image();
+    meno.src = "images/numero_meno.png";
+    let immagini_numeri = {
+        "0": zero,
+        "1": uno,
+        "2": due,
+        "3": tre,
+        "4": quattro,
+        "5": cinque,
+        "6": sei,
+        "7": sette,
+        "8": otto,
+        "9": nove
+    };
+    let animazioni_morte = [];
+
+    //Come fargli prendere un'immagine da una cartella
+    let sfondo = new Image();
+    sfondo.src = "images/sfondo_caverna.png";
+
+    let sconfitta = new Image();
+    sconfitta.src = "images/hai_perso.png";
+    let pausa = new Image();
+    pausa.src = "images/pausa.png";
+
+    let player = new Image();
+    let player_x = 512;
+    let player_y = 427;
+    player.src = "images/cannone.png";
+    let danno_player = 1;
+    let player_hb = new Image();
+    let player_hb_x = 512;
+    let player_hb_y = 427;
+    player_hb.src = "images/hitbox_cannone.png";
+
+
+    document.addEventListener("keydown", function(e) {
+        keys[e.key] = true;
+    });
+
+    document.addEventListener("keyup", function(e) {
+        keys[e.key] = false;
+    });
+
+
+    function inizio() {
+        player_x = 512;
+        player_y = 427;
+        rocce.length = 0;
+        palle.length = 0;
+        delay = 15;
+        danno_player = 1;
+        mode = "gioco";
+        punteggio = 0;
+        salute_aggiuntiva = 0;
+        M_VU = 2;
+        M_VD = 3;
+        animazioni_morte.length = 0;
+    }
+
+    function crea_rocce() {
+        let velocità = randint(2, 5);
+        let lato = randint(1, 2);
+        let x_partenza
+        let salute_roccia
+        let raggio
+        if (lato == 1) {
+            x_partenza = randint(-226, -126);
+        }
+        else if (lato == 2) {
+            x_partenza = randint(1150, 1250);
+            velocità *= -1;
+        }
+        let y_partenza = randint(0, 160);
+        if (punteggio >= 100) {
+            salute_roccia = randint(M_VU, M_VD);
+        }
+        else {
+            salute_roccia = randint(2, 3);
+        }
+        let tipo = randint(1, 20);
+        if (tipo <= 3) {
+            tipo = "rossa";
+            metà_roccia = 105;
+            suolo = 373;
+        }
+        else if (tipo >= 16) {
+            tipo = "verde";
+            metà_roccia = 35;
+            suolo = 435;
+        }
+        else {
+            tipo = randint(1, 2);
+            if (tipo == 1) {
+                tipo = "piccola";
+                metà_roccia = 35;
+                suolo = 435;
+            }
+            else {
+                tipo = "normale";
+                metà_roccia = 70;
+                suolo = 398;
+            }
+        }
+        raggio = metà_roccia
+        rocce.push({
+            tipo: tipo,
+            x: x_partenza,
+            y: y_partenza,
+            salute: salute_roccia,
+            velocità: velocità,
+            suolo: suolo,
+            metà: metà_roccia,
+            raggio: raggio
+        })
+    }
+
+    function draw_palle_cannone() {
+        for (let palla of palle) {
+            ctx.drawImage(palla_cannone, palla.x - 15, palla.y - 15);
+        }
+    }
+
+    function draw_salute_roccia(roccia) {
+        // 1) prendi la salute come numero
+        let valore = Math.floor(roccia.salute);
+
+        // 2) trasformala in stringa
+        let salute_str = String(valore);
+
+        // 3) calcola larghezza totale (20 px per cifra)
+        let larghezza_totale = salute_str.length * 20;
+
+        // 4) centra orizzontalmente
+        let x = roccia.x + 8 - larghezza_totale / 2;
+
+        // 5) posizione verticale (in mezzo alla roccia)
+        let y = roccia.y;
+
+        // 6) disegna ogni cifra
+        for (let cifra of salute_str) {
+            let img;
+
+            if (cifra === "0") img = zero;
+            else if (cifra === "1") img = uno;
+            else if (cifra === "2") img = due;
+            else if (cifra === "3") img = tre;
+            else if (cifra === "4") img = quattro;
+            else if (cifra === "5") img = cinque;
+            else if (cifra === "6") img = sei;
+            else if (cifra === "7") img = sette;
+            else if (cifra === "8") img = otto;
+            else if (cifra === "9") img = nove;
+
+            ctx.drawImage(img, x - 9, y - 13.5); // -10 per centrarlo meglio
+            x += 20;
+        }
+    }
+
+    function draw_rocce() {
+        for (let roccia of rocce) {
+            if (roccia.tipo == "normale") {
+                ctx.drawImage(roccia_normale, roccia.x - roccia.metà, roccia.y - roccia.metà);
+            }
+            else if (roccia.tipo == "piccola") {
+                ctx.drawImage(roccia_s, roccia.x - roccia.metà, roccia.y - roccia.metà);
+            }
+            else if (roccia.tipo == "rossa") {
+                ctx.drawImage(roccia_rossa, roccia.x - roccia.metà, roccia.y - roccia.metà);
+            }
+            else if (roccia.tipo == "verde") {
+                ctx.drawImage(roccia_verde, roccia.x - roccia.metà, roccia.y - roccia.metà);
+            }
+
+            draw_salute_roccia(roccia)
+        }
+    }
+
+    function draw_HUD() {
+        const CANVAS_WIDTH = canvas.width;
+        // --- PUNTEGGIO (sinistra, alto) ---
+        ctx.font = "24px Arial";
+        ctx.fillStyle = "white";
+        ctx.fillText(String(punteggio), 20, 30);
+
+        // --- DANNO (centro, alto) ---
+        ctx.font = "24px Arial";
+        ctx.fillStyle = "rgb(255, 198, 41)";
+        ctx.fillText(
+            String(danno_player),
+            CANVAS_WIDTH / 2 - ctx.measureText(String(danno_player)).width / 2,
+            30
+        );
+
+        // --- SALUTE MOSTRATA (destra, alto) ---
+        ctx.font = "24px Arial";
+        ctx.fillStyle = "red";
+        ctx.fillText(String(salute_mostrata), 940, 30);
+
+
+        // ============================
+        // SEZIONE BASSA (corretta)
+        // ============================
+
+        const fontSizeBottom = 20;
+        const offsetY = fontSizeBottom * 0.75;   // abbassa di 3/4
+
+        // SCORE (sinistra)
+        ctx.font = `${fontSizeBottom}px Arial`;
+        ctx.fillStyle = "white";
+        ctx.fillText("score", 20, 480 + offsetY);
+
+        // DAMAGE (centro)
+        ctx.font = `${fontSizeBottom}px Arial`;
+        ctx.fillStyle = "rgb(255, 198, 41)";
+        ctx.fillText(
+            "damage",
+            (CANVAS_WIDTH / 2) + 37 - ctx.measureText("damage").width,
+            480 + offsetY
+        );
+
+        // FUTURE ROCK'S HEALTH (destra)
+        ctx.font = `${fontSizeBottom}px Arial`;
+        ctx.fillStyle = "red";
+        ctx.fillText("future rock's health", 840, 480 + offsetY);
+    }
+
+    function draw_animazioni_morte() {
+        for (const animazione of animazioni_morte) {
+
+            let x_corrente = animazione.x_an;
+            const y_corrente = animazione.y_an;
+
+            // --- SEGNO ---
+            const primo_carattere = animazione.valore_agg_str[0];
+            let img_segno = (primo_carattere === "-") ? meno : più;
+
+            ctx.drawImage(img_segno, x_corrente, y_corrente);
+            x_corrente += 20;
+
+            // --- CIFRE ---
+            for (let i = 1; i < animazione.valore_agg_str.length; i++) {
+                const cifra = animazione.valore_agg_str[i];
+                const img_cifra = immagini_numeri[cifra];
+
+                if (!img_cifra) {
+                    console.error("Immagine mancante per cifra:", cifra);
+                    continue;
+                }
+
+                ctx.drawImage(img_cifra, x_corrente, y_corrente);
+                x_corrente += 20;
+            }
+        }
+    }
+
+    function draw() {
+        ctx.drawImage(sfondo, 0, 0);
+        draw_palle_cannone();
+        ctx.drawImage(player, player_x - 48, player_y - 48);
+        draw_rocce();
+        if (mode == "sconfitta") {
+            ctx.drawImage(sconfitta, 512 - 124, 256 - 19);
+        }
+        if (mode == "pausa") {
+            ctx.drawImage(pausa, 512 - 74, 256 - 19);
+        }
+        draw_HUD();
+        draw_animazioni_morte();
+    }
+
+    function update() {
+        if (mode == "gioco") {
+            if (keys["ArrowLeft"] && player_x > 51) player_x -= 5;
+            if (keys["ArrowRight"] && player_x < 973) player_x += 5;
+            if (keys["p"]) {
+                mode = "pausa";
+                keys["p"] = false;
+            }
+            palle_cannone();
+            if (rocce.length <= 5) {
+                crea_rocce();
+            }
+            gestione_rocce();
+            collisioni();
+            gestione_animazioni();
+        }
+        if (mode == "sconfitta") {
+            if (keys[" "]) {
+                inizio()
+            }
+        }
+        if (mode == "pausa") {
+            if (keys["p"]) {
+                mode = "gioco"
+                keys["p"] = false
+            }
+        }
+        salute_mostrata = (M_VU + M_VD) / 2
+    }
+
+    function palle_cannone() {
+        if (delay == 0) {
+            palle.push({
+                x: player_x,
+                y: player_y - 24,
+                vel: 7,
+                danno: danno_player
+            })
+            delay = 15;
+        }
+
+        else {
+            delay -= 1;
+        }
+
+        for (let i = palle.length - 1; i >= 0; i--) {
+            palle[i].y -= palle[i].vel;
+
+            if (palle[i].y <= -30) {
+                palle.splice(i, 1);
+            }
+        }
+    }
+    
+    function geometria_analitica(x1, x2, y1, y2) {
+        let radice = (x2 - x1) ** 2 + (y2 - y1) ** 2;
+        let distanza = Math.sqrt(radice);
+        return distanza;
+    }
+
+    function fisica(roccia) {
+        if (roccia.vy == null) {
+            roccia.vy = 0;
+        }
+        let gravità = 0.09;
+        roccia.vy += gravità;
+
+        let delta_y = roccia.vy;
+
+        if (roccia.y + delta_y >= roccia.suolo) {
+            roccia.y = roccia.suolo;
+            roccia.vy *= -0.999;
+            return 0;
+        }
+        return delta_y;
+    }
+
+    function gestione_animazioni() {
+        for (let j = animazioni_morte.length - 1; j >= 0; j--) {
+            const animazione = animazioni_morte[j];
+
+            animazione.timer -= 1;
+            animazione.y_an -= 0.5;
+
+            if (animazione.timer <= 0) {
+                animazioni_morte.splice(j, 1);
+            }
+        }
+    }
+
+    function crea_animazione_morte(roccia, punteggio_aggiunto) {
+
+        // niente animazione se 0, null, undefined
+        if (!punteggio_aggiunto) return;
+
+        const valore_agg = parseInt(punteggio_aggiunto);
+        const valore_agg_str = String(valore_agg);
+
+        // posizione iniziale sopra la roccia
+        let x_an = roccia.x + 8;
+        let y_an = roccia.y;
+
+        // larghezza totale: ogni simbolo è largo 20px
+        const larghezza_totale_an = valore_agg_str.length * 20;
+        x_an -= Math.floor(larghezza_totale_an / 2);
+
+        animazioni_morte.push({
+            x_an: x_an,
+            y_an: y_an,
+            timer: 120,
+            valore_agg_str: valore_agg_str
+        });
+    }
+
+    function gestione_rocce() {
+        for (let i = rocce.length - 1; i >= 0; i--) {
+            let roccia = rocce[i];
+            roccia.x += roccia.velocità;
+            let variazione_y = fisica(roccia);
+            let punteggio_aggiunto;
+            if (variazione_y != null) {
+                roccia.y += variazione_y;
+            }
+            for (let j = palle.length - 1; j >= 0; j--) {
+                let p = palle[j];
+                let punti_palla = [
+                    { x: p.x,      y: p.y - 15 },
+                    { x: p.x,      y: p.y + 15 },
+                    { x: p.x - 15, y: p.y },
+                    { x: p.x + 15, y: p.y }
+                ];
+                let colpita = false;
+                for (let punto of punti_palla) {
+                    if (geometria_analitica(punto.x, roccia.x, punto.y, roccia.y) <= roccia.raggio) {
+                        colpita = true;
+                        break;
+                    }
+                }
+                if (colpita) {
+                    palle.splice(j, 1);
+                    roccia.salute -= p.danno;
+                    if (roccia.salute <= 0) {
+                        if (roccia.tipo == "rossa") {
+                            punteggio_aggiunto = randint(-6, 6) * 5
+                            punteggio += punteggio_aggiunto
+                        }
+                        else if (roccia.tipo == "normale") {
+                            let roccia_destra = {
+                                tipo: "piccola",
+                                x: roccia.x,
+                                y: roccia.y,
+                                salute: randint(1, 2),
+                                velocità: Math.abs(roccia.velocità), // va a destra
+                                suolo: 435,
+                                metà: 35,
+                                raggio: 35
+                            };
+
+                            let roccia_sinistra = {
+                                tipo: "piccola",
+                                x: roccia.x,
+                                y: roccia.y,
+                                salute: randint(1, 2),
+                                velocità: -Math.abs(roccia.velocità), // va a sinistra
+                                suolo: 435,
+                                metà: 35,
+                                raggio: 35
+                            };
+
+                            rocce.push(roccia_destra);
+                            rocce.push(roccia_sinistra);
+                        }
+                        else if (roccia.tipo == "verde") {
+                            danno_player += randint(1, 5);
+                        }
+                        else if (roccia.tipo == "piccola") {
+                            punteggio_aggiunto = randint(5, 15);
+                            punteggio += punteggio_aggiunto
+                        }
+                        if (punteggio >= 100) {
+                            salute_aggiuntiva = randint(1, 2);
+                            M_VU += salute_aggiuntiva;
+                            M_VD += salute_aggiuntiva;
+                        }
+                        crea_animazione_morte(roccia, punteggio_aggiunto);
+                        rocce.splice(i, 1);
+                    }
+                    break;
+                }
+            }
+            if (roccia.x < -400 || roccia.x > 1400) {
+                rocce.splice(i, 1);
+            }
+        }
+    }
+
+    function collisioni() {
+        for (let i = rocce.length -1; i >= 0; i--) {
+            let roccia = rocce[i];
+            let top_left_x = player_x - 21;
+            let top_y = player_y - 48;
+            let top_right_x = player_x + 21;
+            if (geometria_analitica(top_left_x, roccia.x, top_y, roccia.y) <= roccia.raggio) {
+                mode = "sconfitta";
+                return;
+            }
+            else if (geometria_analitica(top_right_x, roccia.x, top_y, roccia.y) <= roccia.raggio) {
+                mode = "sconfitta";
+                return;
+            }
+        }
+    }
+
+    function loop() {
+        draw();
+        update();
+        requestAnimationFrame(loop);
+    }
+
+    inizio()
+    loop();
+
+
+</script>
+
+</body>
+</html>
